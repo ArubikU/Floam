@@ -87,7 +87,8 @@ public final class JemParser {
             this.curSceneRot = ctx.sceneRot; this.curSceneT = ctx.sceneT; this.curSceneScale = ctx.sceneScale;
             this.curBase = ctx.base; this.curScale = ctx.scale; this.curSizeadd = ctx.sizeadd;
             this.curRot = ctx.rot;
-            this.curChildRot = ctx.childRot; this.curChildSceneRot = ctx.childSceneRot;
+            this.curChildRot = ctx.childRot; this.curChildSceneRot = ctx.childSceneRot; this.curScenePivot = ctx.scenePivot;
+            this.curCrSwap = ctx.crSwap; this.curCrSet = ctx.crSet; this.curCrMul = ctx.crMul;
             // position hierarchy starts unrotated; rotEuler carries the bone's own accumulated euler.
             Frame frame = new Frame(Vec3.of(ctx.t), Mat3.identity(), new Vec3(0, 0, 0), false, ctx.invert, ctx.mirror, isExt(part));
             walk(part, frame, model);
@@ -118,6 +119,10 @@ public final class JemParser {
     private double[] curRot = {0, 0, 0};
     private double[] curChildRot = {0, 0, 0};
     private double[] curChildSceneRot = {0, 0, 0};
+    private double[] curScenePivot = {0, 0, 0};
+    private int[] curCrSwap = {0, 1, 2};
+    private double[] curCrSet = {Double.NaN, Double.NaN, Double.NaN};
+    private double[] curCrMul = {1, 1, 1};
 
     /**
      * Faithful to the proven hand-made / FloamyConverter logic: position is a NAIVE translate sum
@@ -154,11 +159,24 @@ public final class JemParser {
             for (JsonNode s : subs) {
                 Vec3 subT = Vec3.of(s.has("translate") ? arr(s.get("translate")) : new double[]{0,0,0});
                 Vec3 subR = Vec3.of(s.has("rotate") ? arr(s.get("rotate")) : new double[]{0,0,0});
-                // position hierarchy: child rotation composes (for descendant positions), child offset
-                // is rotated by the parent. Orientation = THIS submodel's euler (old behaviour, no swap).
+                // .jp modifiers on each sub-bone's OWN rotation: swap axes -> set (NaN=keep) -> multiply.
+                double[] sr = { subR.x, subR.y, subR.z };
+                double[] rm = { sr[curCrSwap[0]], sr[curCrSwap[1]], sr[curCrSwap[2]] };
+                for (int a = 0; a < 3; a++) {
+                    if (!Double.isNaN(curCrSet[a])) rm[a] = curCrSet[a];
+                    rm[a] *= curCrMul[a];
+                }
+                subR = new Vec3(rm[0], rm[1], rm[2]);
+                // proper bone hierarchy: the submodel's rotation folds its boxes around the bone pivot
+                // (e.g. masaki's spikes angle in via rotate ±22.5). Child offset is rotated by the parent.
+                // Armors with no submodel rotation get identity -> same as the old naive sum.
                 Mat3 childRot = frame.rot.mul(Mat3.euler(subR));
                 Vec3 childPos = frame.pos.add(frame.rot.mul(subT));
-                walk(s, new Frame(childPos, childRot, subR, true, frame.inv(), frame.mirror || mirror(s), frame.ext || isExt(s)), model);
+                // "child" (for rotatechilds/rotatescchilds) = a submodel that is an ARTICULATED bone
+                // (has its own rotation). Unrotated grouping submodels (containers wrapping the main
+                // boxes, e.g. fenrir's arm) inherit the parent's flag so root cubes stay root.
+                boolean childFlag = frame.isChild || (subR.x != 0 || subR.y != 0 || subR.z != 0);
+                walk(s, new Frame(childPos, childRot, subR, childFlag, frame.inv(), frame.mirror || mirror(s), frame.ext || isExt(s)), model);
             }
         }
     }
@@ -169,11 +187,16 @@ public final class JemParser {
         double x = c[0], y = c[1], z = c[2], w = c[3], h = c[4], d = c[5];
         double add = b.path("sizeAdd").asDouble(0.0);
 
-        // pos = bone origin + bone-rotation applied to the box's local centre (proper hierarchy).
+        // pos = bone origin + bone rotation applied to the box's local centre (proper hierarchy, so a
+        // rotated sub-bone folds its boxes around its pivot). Top-level frame.rot is identity = naive.
         Vec3 localCenter = new Vec3(x + w / 2, y + h / 2, z + d / 2);
         Vec3 worldCenter = frame.pos.add(frame.rot.mul(localCenter));
 
-        // Scene transform (whole part, around pivot): scalesc -> rotatesc -> translatesc.
+        // Scene transform (whole part): scalesc -> rotatesc -> translatesc, around scenePivot (default
+        // origin). Pivoting matters for OFFSET boxes (e.g. masaki's spikes): rotating around the part
+        // origin swings them away; a chosen pivot keeps them folded with the body.
+        Vec3 piv = Vec3.of(curScenePivot);
+        worldCenter = worldCenter.sub(piv);
         if (curSceneScale != 1.0)
             worldCenter = new Vec3(worldCenter.x * curSceneScale, worldCenter.y * curSceneScale, worldCenter.z * curSceneScale);
         if (curSceneRot[0] != 0 || curSceneRot[1] != 0 || curSceneRot[2] != 0)
@@ -181,6 +204,7 @@ public final class JemParser {
         // rotatescchilds: extra POSITION rotation applied ON TOP, sub-bones only.
         if (frame.isChild && (curChildSceneRot[0] != 0 || curChildSceneRot[1] != 0 || curChildSceneRot[2] != 0))
             worldCenter = Mat3.euler(Vec3.of(curChildSceneRot)).mul(worldCenter);
+        worldCenter = worldCenter.add(piv);
         if (curSceneT[0] != 0 || curSceneT[1] != 0 || curSceneT[2] != 0)
             worldCenter = worldCenter.add(Vec3.of(curSceneT));
 
@@ -225,6 +249,7 @@ public final class JemParser {
                     new double[]{emitPos.x, emitPos.y, emitPos.z},
                     new double[]{half.x * curScale, half.y * curScale, half.z * curScale},
                     boxIndex, curT);
+            bc.perFace = perFace;
             jp.applyBox(curKey, bc);
             emitPos = new Vec3(bc.pos[0], bc.pos[1], bc.pos[2]);
             // switchface: remap face UVs (swap[i] = which source face's UV face i takes)
@@ -241,13 +266,6 @@ public final class JemParser {
                     faces[i] = flipOne(faces[i], bc.faceU[i], bc.faceV[i]);
         }
 
-        // Per-face shader-mirror compensation, applied LAST by FINAL slot: the box fragment samples
-        // WEST and SOUTH with (1-box.x). Box-UV's auto-unwrap is pre-arranged for that; per-face literal
-        // rects are not. Doing it here (after switchface/flipface) keeps user ops operating on clean data.
-        if (perFace) {
-            if (faces[CemBox.WEST] != null && faces[CemBox.WEST].enabled)   faces[CemBox.WEST]  = flipOne(faces[CemBox.WEST],  true, false);
-            if (faces[CemBox.SOUTH] != null && faces[CemBox.SOUTH].enabled) faces[CemBox.SOUTH] = flipOne(faces[CemBox.SOUTH], true, false);
-        }
 
         return new CemBox(emitPos, half, rotEuler, new Vec3(0, 0, 0), frame.mirror, faces,
                 curBase, frame.ext, curScale, rotMatrix);

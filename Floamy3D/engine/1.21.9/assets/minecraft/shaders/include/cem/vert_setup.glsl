@@ -41,6 +41,7 @@ switch (gl_VertexID % 4)
 
 cem_Pos.z = min(cem_Pos.z, -1);
 cem_glPos = cem_Pos.xyz;
+cem_modelFrag = modelPos.xyz + inverse(mat3(ModelViewMat)) * vec3(cornerT * 2.5 * cem_size, 0.0);
 //cem_Pos -= ProjMat[3] / cem_Pos.z;
 mat4 proj = ProjMat;
 proj[3].xy = vec2(0, 0);

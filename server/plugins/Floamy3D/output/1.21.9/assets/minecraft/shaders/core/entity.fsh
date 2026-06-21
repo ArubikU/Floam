@@ -11,6 +11,8 @@
 #moj_import <emissive_utils.glsl>
 #moj_import <mods/armor/armorparts.glsl>
 #moj_import <mods/parts.glsl>
+#moj_import <cem_locs.glsl>
+#moj_import <floamy/registry/defines.glsl>
 
 uniform sampler2D Sampler0;
 uniform mat3 IViewRotMat;
@@ -30,6 +32,7 @@ flat in int bodypart;
 flat in ivec4 cems;
 flat in float cem_size;
 flat in int isGui;
+in vec3 cem_modelFrag;
 flat in ivec2 RelativeCords;
 flat in int markforremove;
 flat in int isTrim;
@@ -75,12 +78,13 @@ void main() {
         
         mat3 rotMat = PIY25;
         if (bodypart != -1) {
-            for (int cemId = 0; cemId < 2; cemId++) {
+            for (int cemId = 0; cemId < 4; cemId++) {
                 int cemi = cems[cemId];
                 if (cemi == -1){
                     continue;
                 }
                 switch (cemi) {
+                    #moj_import <floamy/registry/model.glsl>
                     #moj_import <mods/armor/armor.glsl>
                 }
                 

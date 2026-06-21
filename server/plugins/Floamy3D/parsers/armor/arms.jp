@@ -3,15 +3,15 @@ rotatesc y -90
 rotate x 90
 rotatesc z -90
 translatesc -12 0 0
-rotatechilds x 90
-rotatechilds y 90
 cube *
-
+flipupf
 switchface east west
 flipface south
 switchface up down
 flipface up
 flipface down
+childrotmul x -1
+childrotmul y -1
 
 match *:*right_arms* *:*right_arm*
 rotatesc y 90

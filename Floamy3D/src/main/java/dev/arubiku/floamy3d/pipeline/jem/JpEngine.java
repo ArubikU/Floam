@@ -44,6 +44,11 @@ public final class JpEngine {
         public double sceneScale = 1.0;          // scale the whole scene around the pivot
         public double[] childRot = {0, 0, 0};   // extra ORIENTATION rotation, sub-bones only (over everything)
         public double[] childSceneRot = {0, 0, 0}; // extra POSITION rotation, sub-bones only (over everything)
+        public double[] scenePivot = {0, 0, 0}; // pivot point for scalesc/rotatesc (default = part origin)
+        // Modify each sub-bone's OWN (JEM) rotation: axis remap (swap), set (NaN = keep), multiply.
+        public int[] crSwap = {0, 1, 2};
+        public double[] crSet = {Double.NaN, Double.NaN, Double.NaN};
+        public double[] crMul = {1, 1, 1};
         public boolean[] invert = {false, false, false};
         public boolean mirror = false;
         public String base = "PIX";
@@ -62,6 +67,7 @@ public final class JpEngine {
         public boolean flipU = false, flipV = false; // all-face horizontal/vertical UV flip
         public boolean[] faceU = new boolean[6], faceV = new boolean[6]; // per-face flip (down,up,north,east,south,west)
         public int[] swap = {0, 1, 2, 3, 4, 5}; // face UV remap: swap[i] = which source face's UV face i takes
+        public boolean perFace = false; // true if this box uses per-face UVs (uvNorth/...) not box-UV (textureOffset)
         public BoxCtx(double[] pos, double[] size, int idx, double[] t) { this.pos = pos; this.size = size; this.idx = idx; this.t = t; }
     }
 
@@ -175,6 +181,14 @@ public final class JpEngine {
                     sc.actions.add(Action.part(c -> { c.sceneT[0] += x.eval(part(c)); c.sceneT[1] += y.eval(part(c)); c.sceneT[2] += z.eval(part(c)); })); }
                 case "scalesc" -> { Expr e = Expr.parse(k[1], vars);   // scale whole scene around pivot
                     sc.actions.add(Action.part(c -> c.sceneScale = e.eval(part(c)))); }
+                case "scenepivot" -> { Expr x = Expr.parse(k[1], vars), y = Expr.parse(k[2], vars), z = Expr.parse(k[3], vars);  // pivot for scalesc/rotatesc
+                    sc.actions.add(Action.part(c -> { c.scenePivot[0] = x.eval(part(c)); c.scenePivot[1] = y.eval(part(c)); c.scenePivot[2] = z.eval(part(c)); })); }
+                case "childrotswap" -> { int a = axis(k[1]), bb = axis(k[2]);   // swap two axes of each sub-bone's own rotation
+                    sc.actions.add(Action.part(c -> { int t = c.crSwap[a]; c.crSwap[a] = c.crSwap[bb]; c.crSwap[bb] = t; })); }
+                case "childrotset" -> { int ax = axis(k[1]); Expr e = Expr.parse(k[2], vars);   // set an axis of each sub-bone's own rotation
+                    sc.actions.add(Action.part(c -> c.crSet[ax] = e.eval(part(c)))); }
+                case "childrotmul" -> { int ax = axis(k[1]); Expr e = Expr.parse(k[2], vars);   // multiply an axis of each sub-bone's own rotation
+                    sc.actions.add(Action.part(c -> c.crMul[ax] *= e.eval(part(c)))); }
                 case "invert" -> { int ax = axis(k[1]); boolean on = k.length < 3 || truthy(k[2]); sc.actions.add(Action.part(c -> c.invert[ax] = on)); }
                 case "base" -> { String v = k[1]; sc.actions.add(Action.part(c -> c.base = v.equalsIgnoreCase("none") ? null : v.toUpperCase(Locale.ROOT))); }
                 case "scale" -> { Expr e = Expr.parse(k[1], vars); sc.actions.add(Action.part(c -> c.scale = e.eval(part(c)))); }
@@ -185,6 +199,8 @@ public final class JpEngine {
                 case "seat" -> sc.actions.add(Action.box(b -> b.pos[2] = -b.size[1], cube));
                 case "flipu" -> sc.actions.add(Action.box(b -> b.flipU = !b.flipU, cube));   // all-face horizontal UV flip
                 case "flipv" -> sc.actions.add(Action.box(b -> b.flipV = !b.flipV, cube));   // all-face vertical UV flip
+                case "flipupf" -> sc.actions.add(Action.box(b -> { if (b.perFace) b.flipU = !b.flipU; }, cube));   // U flip ONLY on per-face boxes
+                case "flipvpf" -> sc.actions.add(Action.box(b -> { if (b.perFace) b.flipV = !b.flipV; }, cube));   // V flip ONLY on per-face boxes
                 case "flipface" -> {   // flip ONE face's UV: flipface <down|up|north|east|south|west> [u|v]
                     int fi = face(k[1]); boolean vv = k.length > 2 && k[2].equalsIgnoreCase("v");
                     sc.actions.add(Action.box(b -> { if (vv) b.faceV[fi] = !b.faceV[fi]; else b.faceU[fi] = !b.faceU[fi]; }, cube));

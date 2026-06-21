@@ -3,7 +3,7 @@
 case CEM_ZEKERN_CHAINMAIL_SP_CHESTPLATE: {
     ADD_BOX_WITH_ROTATION_ROTATE_NO_TRANSPARENCY(vec3(-0.0000,0.0000,-6.0000), vec3(4.7500,6.7500,2.7500), mat3(1.00000,0.00000,0.00000,0.00000,0.00000,-1.00000,0.00000,1.00000,0.00000), vec3(0,0,0),
         relativeUv(28,20,8,-4,RelativeCords), relativeUv(20,16,8,4,RelativeCords),
-        relativeUv(20,20,8,12,RelativeCords), relativeUv(28,20,4,12,RelativeCords),
+        relativeUv(20,20,8,12,RelativeCords), relativeUv(32,20,-4,12,RelativeCords),
         relativeUv(40,20,-8,12,RelativeCords), relativeUv(16,20,4,12,RelativeCords),
         2, 2,
         2, 2,
@@ -13,24 +13,24 @@ case CEM_ZEKERN_CHAINMAIL_SP_CHESTPLATE: {
 
 #define CEM_ZEKERN_CHAINMAIL_SP_LEFT_FEET 1065   // -> bone STASIS_LEFT_BOOT, 3 box(es)
 case CEM_ZEKERN_CHAINMAIL_SP_LEFT_FEET: {
-    ADD_BOX_WITH_ROTATION_ROTATE_NO_TRANSPARENCY(vec3(-0.0000,0.0000,-6.0000), vec3(2.7500,6.7500,2.7500), mat3(1.00000,0.00000,0.00000,0.00000,0.00000,1.00000,0.00000,-1.00000,0.00000), vec3(0,0,0),
+    ADD_BOX_WITH_ROTATION_ROTATE_NO_TRANSPARENCY(vec3(-0.0000,0.0000,-6.0000), vec3(2.7500,6.7500,2.7500), mat3(1.00000,0.00000,0.00000,0.00000,0.00000,-1.00000,0.00000,1.00000,0.00000), vec3(0,0,0),
         relativeUv(4,16,4,4,RelativeCords), relativeUv(8,16,4,4,RelativeCords),
-        relativeUv(4,20,4,12,RelativeCords), relativeUv(0,20,4,12,RelativeCords),
-        relativeUv(16,20,-4,12,RelativeCords), relativeUv(8,20,4,12,RelativeCords),
+        relativeUv(16,20,-4,12,RelativeCords), relativeUv(0,20,4,12,RelativeCords),
+        relativeUv(4,20,4,12,RelativeCords), relativeUv(8,20,4,12,RelativeCords),
         2, 2,
         2, 2,
         2, 2);
-    ADD_BOX_WITH_ROTATION_ROTATE_NO_TRANSPARENCY(vec3(-0.0000,0.0000,-5.5000), vec3(3.0000,0.5000,3.0000), mat3(1.00000,0.00000,0.00000,0.00000,0.00000,1.00000,0.00000,-1.00000,0.00000), vec3(0,0,0),
+    ADD_BOX_WITH_ROTATION_ROTATE_NO_TRANSPARENCY(vec3(-0.0000,0.0000,-5.5000), vec3(3.0000,0.5000,3.0000), mat3(1.00000,0.00000,0.00000,0.00000,0.00000,-1.00000,0.00000,1.00000,0.00000), vec3(0,0,0),
         relativeUv(6,0,6,6,RelativeCords), relativeUv(12,0,6,6,RelativeCords),
-        relativeUv(6,6,6,1,RelativeCords), relativeUv(0,6,6,1,RelativeCords),
-        relativeUv(24,6,-6,1,RelativeCords), relativeUv(12,6,6,1,RelativeCords),
+        relativeUv(24,6,-6,1,RelativeCords), relativeUv(0,6,6,1,RelativeCords),
+        relativeUv(6,6,6,1,RelativeCords), relativeUv(12,6,6,1,RelativeCords),
         2, 2,
         2, 2,
         2, 2);
-    ADD_BOX_WITH_ROTATION_ROTATE_NO_TRANSPARENCY(vec3(0.0000,1.8478,-4.7654), vec3(3.0000,1.0000,2.0000), mat3(1.00000,0.00000,0.00000,0.00000,-0.38268,0.92388,0.00000,-0.92388,-0.38268), vec3(0,0,0),
+    ADD_BOX_WITH_ROTATION_ROTATE_NO_TRANSPARENCY(vec3(0.0000,1.8478,-4.7654), vec3(3.0000,1.0000,2.0000), mat3(1.00000,0.00000,0.00000,0.00000,0.38268,-0.92388,0.00000,0.92388,0.38268), vec3(0,0,0),
         relativeUv(33,0,6,4,RelativeCords), relativeUv(39,0,6,4,RelativeCords),
-        relativeUv(33,4,6,2,RelativeCords), relativeUv(29,4,4,2,RelativeCords),
-        relativeUv(49,4,-6,2,RelativeCords), relativeUv(39,4,4,2,RelativeCords),
+        relativeUv(49,4,-6,2,RelativeCords), relativeUv(29,4,4,2,RelativeCords),
+        relativeUv(33,4,6,2,RelativeCords), relativeUv(39,4,4,2,RelativeCords),
         2, 2,
         2, 2,
         2, 2);
@@ -115,7 +115,7 @@ case CEM_ZEKERN_CHAINMAIL_SP_INNER_ARMOR: {
 
 #define CEM_ZEKERN_CHAINMAIL_SP_LEFT_LEG 1070   // -> bone STASIS_LEFT_LEG, 1 box(es)
 case CEM_ZEKERN_CHAINMAIL_SP_LEFT_LEG: {
-    ADD_BOX_WITH_ROTATION_ROTATE_NO_TRANSPARENCY(vec3(-0.0000,0.0000,-6.0000), vec3(2.5000,6.5000,2.5000), mat3(1.00000,0.00000,0.00000,0.00000,0.00000,1.00000,0.00000,-1.00000,0.00000), vec3(0,0,0),
+    ADD_BOX_WITH_ROTATION_ROTATE_NO_TRANSPARENCY(vec3(-0.0000,0.0000,-6.0000), vec3(2.5000,6.5000,2.5000), mat3(1.00000,0.00000,0.00000,0.00000,0.00000,-1.00000,0.00000,1.00000,0.00000), vec3(0,0,0),
         relativeUv(4,16,4,4,RelativeCords), relativeUv(8,16,4,4,RelativeCords),
         relativeUv(4,20,4,12,RelativeCords), relativeUv(0,20,4,12,RelativeCords),
         relativeUv(16,20,-4,12,RelativeCords), relativeUv(8,20,4,12,RelativeCords),

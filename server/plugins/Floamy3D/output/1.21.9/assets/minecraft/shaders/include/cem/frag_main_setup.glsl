@@ -21,7 +21,7 @@ vec3 bitangent = normalize(gl_PrimitiveID % 2 == 1 ? Pos1 - Pos3 : Pos3 - Pos2);
 vec3 normalT = normalize(cross(tangent, bitangent));
 
 #ifdef MINUS_Z
-if (ProjMat[3][0] == -1)
+if (ProjMat[3][0] == -1 || isGui == 1)
     normalT *= -1;
 #endif
 
@@ -48,6 +48,13 @@ if (ProjMat[3][0] == -1)
 {
     center = vec3(-cem_glPos.xy + rawCenter.xy, rawCenter.z) * TBN;
     dir = vec3(0, 0, -1);
+    dirTBN = normalize(dir * TBN);
+}
+else if (isGui == 1)
+{
+    // Inventory (ortho): NORTH-face billboard TBN (normal faces camera dead-front -> non-degenerate).
+    // center stays rawCenter*TBN; the parallel per-fragment ray origin is added in the decode (cem_modelFrag).
+    dir = normalize(inverse(mat3(ModelViewMat)) * vec3(0.0, 0.0, -1.0));
     dirTBN = normalize(dir * TBN);
 }
 

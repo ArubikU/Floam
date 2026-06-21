@@ -65,7 +65,10 @@ public final class Floamy3DRuntime {
     // ---- runtime ----
     public void wear(Player player, String cosmeticId) { cosmetics.wear(player, cosmeticId); }
     public void clear(Player player) { cosmetics.clear(player); }
-    public List<String> listCosmetics() { return List.copyOf(cosmetics.defs().keySet()); }
+    public List<String> listCosmetics() {
+        var ids = cosmetics.wearableIds();
+        return ids.isEmpty() ? List.copyOf(cosmetics.defs().keySet()) : List.copyOf(ids);
+    }
 
     // ---- generation ----
 
@@ -184,10 +187,22 @@ public final class Floamy3DRuntime {
                 + "    int fdw, fdiy, fddy; fd_grid(fdw, fdiy, fddy);\n"
                 + "    int fds, fdc; fd_index(cemi, fdw, fdiy, fds, fdc);\n"
                 + "    for (int fdi = 0; fdi < fdc; fdi++) {\n"
-                + "        vec3 _p, _s; mat3 _R; vec4 _u, _d, _n, _w, _so, _e;\n"
-                + "        fd_box(fds + fdi, fdw, fddy, RelativeCords, _p, _s, _R, _u, _d, _n, _w, _so, _e);\n"
-                + "        color = sBoxWithRotation(_R * (-center + _p * modelSize), _R * dirTBN, _s * modelSize,\n"
-                + "                TBN * inverse(_R), color, minT, _u, _d, _n, _w, _so, _e, 2., 2., 2., 2., 2., 2., true);\n"
+                // LAZY READ: geometry first (8 texelFetch), intersect, and only read the 12 face pixels
+                // + sample for boxes the ray actually hits closer than the current depth. Big GPU win.
+                + "        vec3 _p, _s; mat3 _R;\n"
+                + "        fd_box_geo(fds + fdi, fdw, fddy, _p, _s, _R);\n"
+                // GUI ortho: parallel rays -> add the per-fragment billboard origin (cem_modelFrag) in the
+                // tangent frame. Perspective keeps origin 0 (camera).
+                + "        vec3 _ro = _R * (-center + _p * modelSize + (isGui == 1 ? cem_modelFrag * TBN : vec3(0.0)));\n"
+                + "        vec3 _rd = _R * dirTBN;\n"
+                + "        vec3 _sz = _s * modelSize;\n"
+                + "        vec3 _nrm; vec3 _bi = boxIntersect(_ro, _rd, _sz, _nrm, true);\n"
+                + "        if (_bi.z < minT) {\n"
+                + "            vec4 _u, _d, _n, _w, _so, _e;\n"
+                + "            fd_box_faces(fds + fdi, fdw, fddy, RelativeCords, _u, _d, _n, _w, _so, _e);\n"
+                + "            color = sBoxWithRotation(_ro, _rd, _sz,\n"
+                + "                    TBN * inverse(_R), color, minT, _u, _d, _n, _w, _so, _e, 2., 2., 2., 2., 2., 2., true);\n"
+                + "        }\n"
                 + "    }\n"
                 + "    break;\n}\n#endif\n";
         java.nio.file.Files.writeString(inc.resolve("mods/armor/armor.glsl"), armorGlsl);
@@ -206,6 +221,8 @@ public final class Floamy3DRuntime {
         int cos = 0;
         cos += scanCosmetics(data.resolve("cosmetics"), CosmeticType.PLAYER_PART_OVERRIDE);
         cos += scanCosmetics(data.resolve("modifications"), CosmeticType.PLAYER_PART_OVERRIDE);
+        // configured cosmetics: any subfolder (recursive) with a config.yml = {id, permission, overlay, model, jp}
+        cos += scanConfiguredCosmetics(data.resolve("cosmetics"));
         registry.writeAll(inc);
 
         plugin.getLogger().info("Floamy3D: generated " + armorCount + " armor(s), " + cos + " cosmetic(s)");
@@ -240,6 +257,62 @@ public final class Floamy3DRuntime {
                 }
             } catch (Exception ex) {
                 plugin.getLogger().warning("Floamy3D: failed cosmetic " + model.getName() + ": " + ex.getMessage());
+            }
+        }
+        return n;
+    }
+
+    /** Configured cosmetics: a subfolder with config.yml {id, permission, overlay, model, jp}. The
+     *  overlay texture is baked into the wearer's skin (so the geometry samples it); the marker is
+     *  still auto-assigned by the registry (config never carries identifier pixels). */
+    private int scanConfiguredCosmetics(Path root) {
+        int n = 0;
+        if (!root.toFile().isDirectory()) return n;
+        java.util.List<File> configs = new java.util.ArrayList<>();
+        try (var s = java.nio.file.Files.walk(root)) {
+            s.filter(p -> p.getFileName().toString().equalsIgnoreCase("config.yml")).map(Path::toFile).forEach(configs::add);
+        } catch (Exception ignored) {}
+        for (File cfgFile : configs) {
+            try {
+                File folder = cfgFile.getParentFile();
+                var cfg = org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(cfgFile);
+                String id = cfg.getString("id", folder.getName()).toLowerCase(java.util.Locale.ROOT);
+                String perm = cfg.getString("permission", null);
+                File modelF = new File(folder, cfg.getString("model", "model.bbmodel"));
+                if (!modelF.exists()) { plugin.getLogger().warning("Floamy3D cosmetic " + id + ": missing model"); continue; }
+                // ONE model -> CEM parts (one GLSL case). The extractor keeps only geometry ADDED on top
+                // of the default player template (default bones are discarded), so capes stay tiny.
+                var ex = new dev.arubiku.floamy3d.pipeline.bbmodel.CosmeticExtractor().extract(modelF, CemModel.sanitize(id).toUpperCase(java.util.Locale.ROOT));
+                java.util.List<CemModel> models = new java.util.ArrayList<>();
+                models.addAll(ex.cosmetics); models.addAll(ex.modifications);
+                java.util.List<String> partIds = new java.util.ArrayList<>();
+                for (CemModel m : models) {
+                    if (m.boxes.isEmpty()) continue;
+                    m.kind = CemModel.Kind.COSMETIC;
+                    Registry.Entry e = registry.register(m);
+                    var fp = new dev.arubiku.floamy3d.pipeline.registry.OverlapDetector().footprint(m);
+                    String pid = m.id.toLowerCase(java.util.Locale.ROOT);
+                    // part Def's overlay is null; the chosen VARIANT supplies the overlay via the group.
+                    cosmetics.register(new CosmeticManager.Def(pid,
+                            CosmeticType.PLAYER_PART_OVERRIDE, e.markerX, e.markerY, e.markerValue, 128, null, fp, perm));
+                    partIds.add(pid); n++;
+                }
+                if (partIds.isEmpty()) continue;
+                // variants: one wearable per texture, all sharing the SAME parts/markers (only the overlay differs).
+                var vsec = cfg.getConfigurationSection("variants");
+                if (vsec != null && !vsec.getKeys(false).isEmpty()) {
+                    for (String sub : vsec.getKeys(false)) {
+                        File tex = new File(folder, vsec.getString(sub));
+                        java.awt.image.BufferedImage ov = tex.exists() ? javax.imageio.ImageIO.read(tex) : null;
+                        cosmetics.registerGroup(id + "_" + sub.toLowerCase(java.util.Locale.ROOT), partIds, ov, perm);
+                    }
+                } else {
+                    File overlayF = new File(folder, cfg.getString("overlay", "overlay.png"));
+                    java.awt.image.BufferedImage ov = overlayF.exists() ? javax.imageio.ImageIO.read(overlayF) : null;
+                    cosmetics.registerGroup(id, partIds, ov, perm);
+                }
+            } catch (Exception ex) {
+                plugin.getLogger().warning("Floamy3D: failed configured cosmetic " + cfgFile.getParent() + ": " + ex.getMessage());
             }
         }
         return n;

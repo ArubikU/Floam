@@ -31,6 +31,7 @@ public final class ArmorGenerator {
     private static final Map<String, String[]> L1 = new LinkedHashMap<>();
     private static final Map<String, String[]> L2 = new LinkedHashMap<>();
     static {
+        // 2nd element = the STASIS bone the VSH detects this part as (VSH picks L/R via sign(Position.x)).
         L1.put("head",       new String[]{"HELMET",     "STASIS_HELMET"});
         L1.put("body",       new String[]{"CHESTPLATE", "STASIS_CHESTPLATE"});
         L1.put("left_arm",   new String[]{"LEFT_ARM",   "STASIS_LEFT_ARM"});
@@ -170,7 +171,9 @@ public final class ArmorGenerator {
             ref.append("#define CEM_").append(s.model.id).append(" ").append(n)
                .append("   // -> bone ").append(s.stasis).append(", ").append(s.model.boxes.size()).append(" box(es)\n");
             ref.append(emitter.modelCaseLegacy(s.model)).append('\n');
-            parts.add(new dev.arubiku.floamy3d.pipeline.texture.ArmorDataCodec.Part(n, s.model.boxes));
+            String idU = s.model.id.toUpperCase(Locale.ROOT);
+            int side = idU.contains("LEFT") ? 1 : (idU.contains("RIGHT") ? 2 : 0);
+            parts.add(new dev.arubiku.floamy3d.pipeline.texture.ArmorDataCodec.Part(n, s.model.boxes, side));
             n++;
         }
         return new Built(vsh.toString(), defs.toString(), ref.toString(), parts, n);

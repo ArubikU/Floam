@@ -57,6 +57,12 @@ public final class Registry {
     public void writeAll(Path includeDir) throws IOException {
         Path cosmetics = includeDir.resolve("floamy/cosmetics");
         Path registry = includeDir.resolve("floamy/registry");
+        // wipe stale generated cosmetics so removed/renamed ids don't linger (huge stale GLSL).
+        if (Files.isDirectory(cosmetics)) {
+            try (var s = Files.walk(cosmetics)) {
+                s.sorted(java.util.Comparator.reverseOrder()).forEach(p -> { try { Files.deleteIfExists(p); } catch (IOException ignored) {} });
+            }
+        }
         Files.createDirectories(registry);
 
         StringBuilder defines = new StringBuilder("// generated — CEM ids\n");

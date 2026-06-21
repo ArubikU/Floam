@@ -37,11 +37,13 @@ public final class ArmorDataCodec {
     public static final int SCALARS = 40;
     public static final double RANGE = 64.0;      // fixed-point half-range
 
-    /** One armor part: its cem id and the boxes that make it up. */
+    /** One armor part: its cem id, the boxes that make it up, and its body side. */
     public static final class Part {
         public final int cemId;
         public final List<CemBox> boxes;
-        public Part(int cemId, List<CemBox> boxes) { this.cemId = cemId; this.boxes = boxes; }
+        public final int side;   // 0 = center, 1 = left, 2 = right (for L/R disambiguation via UV mirror)
+        public Part(int cemId, List<CemBox> boxes) { this(cemId, boxes, 0); }
+        public Part(int cemId, List<CemBox> boxes, int side) { this.cemId = cemId; this.boxes = boxes; this.side = side; }
     }
 
     /** Rows of data this part list needs below the color tiles (index row + box rows). */
@@ -101,19 +103,21 @@ public final class ArmorDataCodec {
         double[] s = new double[SCALARS];
         int i = 0;
         s[i++] = b.center.x; s[i++] = b.center.y; s[i++] = b.center.z;
-        Vec3 size = new Vec3(b.half.x * b.scale, b.half.y * b.scale, b.half.z * b.scale);
+        // clamp to a tiny min: a zero-extent box (flat "plane" spikes, e.g. masaki) makes the shader's
+        // 1/rd box intersect divide by zero -> NaN -> a stray vertex stretching to screen origin.
+        Vec3 size = new Vec3(Math.max(b.half.x * b.scale, 0.01), Math.max(b.half.y * b.scale, 0.01), Math.max(b.half.z * b.scale, 0.01));
         s[i++] = size.x; s[i++] = size.y; s[i++] = size.z;
         Mat3 R = rotation(b);
         double[] m = R.m;                          // same order GlslEmitter feeds to mat3(...)
-        for (int j = 0; j < 9; j++) s[i++] = m[j];
-        // faces in sBoxWithRotation order: u, d, n, w, s, e
+        for (int j = 0; j < 9; j++) s[i++] = m[j];   // -> scalars 6..14
+        s[i++] = b.ext ? 1 : 0;                      // flag at scalar 15 (so faces start on px boundary)
+        // faces 16..39 (6 faces x 4), order u, d, n, w, s, e — the lazy-read split reads px8..19 here.
         int[] order = {CemBox.UP, CemBox.DOWN, CemBox.NORTH, CemBox.WEST, CemBox.SOUTH, CemBox.EAST};
         for (int f : order) {
             FaceUV fu = b.faces[f];
             if (fu != null && fu.enabled) { s[i++] = fu.x; s[i++] = fu.y; s[i++] = fu.w; s[i++] = fu.h; }
             else { s[i++] = 0; s[i++] = 0; s[i++] = 0; s[i++] = 0; }
         }
-        s[i++] = b.ext ? 1 : 0;
         return s;
     }
 

@@ -29,14 +29,20 @@ public final class CosmeticManager {
         public final int markerX, markerY, markerValue, speed;
         public final BufferedImage overlay; // optional
         public final List<OverlapDetector.Rect> footprint; // skin UV rects (for overlap warning)
+        public final String permission; // null = free to wear
         public Def(String id, CosmeticType type, int mx, int my, int value, int speed, BufferedImage overlay) {
             this(id, type, mx, my, value, speed, overlay, java.util.Collections.emptyList());
         }
         public Def(String id, CosmeticType type, int mx, int my, int value, int speed,
                    BufferedImage overlay, List<OverlapDetector.Rect> footprint) {
+            this(id, type, mx, my, value, speed, overlay, footprint, null);
+        }
+        public Def(String id, CosmeticType type, int mx, int my, int value, int speed,
+                   BufferedImage overlay, List<OverlapDetector.Rect> footprint, String permission) {
             this.id = id; this.type = type; this.markerX = mx; this.markerY = my;
             this.markerValue = value; this.speed = speed; this.overlay = overlay;
             this.footprint = footprint == null ? java.util.Collections.emptyList() : footprint;
+            this.permission = permission;
         }
     }
 
@@ -67,10 +73,48 @@ public final class CosmeticManager {
     public void register(Def def) { defs.put(def.id.toLowerCase(java.util.Locale.ROOT), def); }
     public Map<String, Def> defs() { return defs; }
 
+    /** A wearable made of one model's parts + a chosen variant texture. One model + N variants =
+     *  one CEM/GLSL case, N overlays (markers shared across variants of the same model's parts). */
+    public static final class Group {
+        public final java.util.List<String> partIds;
+        public final BufferedImage overlay;   // the variant's texture (baked into the skin)
+        public final String permission;
+        public Group(java.util.List<String> partIds, BufferedImage overlay, String permission) {
+            this.partIds = partIds; this.overlay = overlay; this.permission = permission;
+        }
+    }
+    private final Map<String, Group> groups = new ConcurrentHashMap<>();
+    public void registerGroup(String groupId, java.util.List<String> partIds, BufferedImage overlay, String permission) {
+        groups.put(groupId.toLowerCase(java.util.Locale.ROOT), new Group(partIds, overlay, permission));
+    }
+    public boolean isWearable(String id) {
+        String k = id.toLowerCase(java.util.Locale.ROOT);
+        return groups.containsKey(k) || defs.containsKey(k);
+    }
+    public java.util.Set<String> wearableIds() {
+        java.util.Set<String> s = new java.util.LinkedHashSet<>(groups.keySet());
+        return s;
+    }
+
     public void wear(Player player, String id) {
-        Def def = defs.get(id.toLowerCase(java.util.Locale.ROOT));
-        if (def == null) {
+        String key = id.toLowerCase(java.util.Locale.ROOT);
+        Group grp = groups.get(key);
+        List<Def> parts = new java.util.ArrayList<>();
+        BufferedImage overlayTex; String perm;
+        if (grp != null) {
+            for (String p : grp.partIds) { Def d = defs.get(p.toLowerCase(java.util.Locale.ROOT)); if (d != null) parts.add(d); }
+            overlayTex = grp.overlay; perm = grp.permission;
+        } else {
+            Def d = defs.get(key);
+            if (d != null) { parts.add(d); overlayTex = d.overlay; perm = d.permission; } else { overlayTex = null; perm = null; }
+        }
+        if (parts.isEmpty()) {
             player.sendMessage("Floamy3D: unknown cosmetic '" + id + "'");
+            return;
+        }
+        Def def = parts.get(0); // primary: worn-tracking / conflict footprint
+        if (perm != null && !perm.isEmpty() && !player.hasPermission(perm)) {
+            player.sendMessage("Floamy3D: no permission for cosmetic '" + id + "' (" + perm + ")");
             return;
         }
         saveOriginal(player);
@@ -89,15 +133,15 @@ public final class CosmeticManager {
             }
         }
 
-        // markers to stamp: the new one (enabled) + the removed ones disabled (value 0)
+        // markers to stamp: ALL parts of the new cosmetic (enabled) + the removed ones disabled (value 0)
         List<SkinComposer.Marker> markers = new java.util.ArrayList<>();
-        markers.add(new SkinComposer.Marker(def.markerX, def.markerY, def.markerValue, def.speed));
+        for (Def p : parts) markers.add(new SkinComposer.Marker(p.markerX, p.markerY, p.markerValue, p.speed));
         for (Def w : removed) markers.add(new SkinComposer.Marker(w.markerX, w.markerY, 0, 0));
 
         Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
             BufferedImage base = profile.fetchSkin(player);
             if (base == null) base = new BufferedImage(64, 64, BufferedImage.TYPE_INT_ARGB);
-            BufferedImage composed = composer.compose(base, def.overlay, markers);
+            BufferedImage composed = composer.compose(base, overlayTex, markers);
             String[] sig = mineskin.sign(composed);
             if (sig == null) {
                 Bukkit.getScheduler().runTask(plugin, () ->
@@ -108,10 +152,10 @@ public final class CosmeticManager {
                 profile.applyTextures(player, sig[0], sig[1]);
                 applier.refresh(player);
                 for (Def w : removed) current.remove(w.id.toLowerCase(java.util.Locale.ROOT));
-                current.put(def.id.toLowerCase(java.util.Locale.ROOT), def);
+                current.put(id.toLowerCase(java.util.Locale.ROOT), def);
                 player.getPersistentDataContainer().set(this.worn, PersistentDataType.STRING,
                         String.join(",", current.keySet()));
-                player.sendMessage("Floamy3D: wearing " + def.id);
+                player.sendMessage("Floamy3D: wearing " + id);
             });
         });
     }

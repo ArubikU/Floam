@@ -1,0 +1,36 @@
+id: cape
+permission: floamy3d.cosmetic.cape
+model: model.bbmodel
+jp: model.jp
+variants:
+  8bits_cape: textures/8bits_cape.png
+  amatist_cape: textures/amatist_cape.png
+  bee_cape: textures/bee_cape.png
+  birthday_cape: textures/birthday_cape.png
+  blaze_cape: textures/blaze_cape.png
+  bunny_cape: textures/bunny_cape.png
+  cherry_blosoom_cape: textures/cherry_blosoom_cape.png
+  classic_mojang_cape: textures/classic_mojang_cape.png
+  cobalt_cape: textures/cobalt_cape.png
+  diamond_creeper_cape: textures/diamond_creeper_cape.png
+  ender_cape: textures/ender_cape.png
+  glow_cape: textures/glow_cape.png
+  gold_cape: textures/gold_cape.png
+  golden_creeper_cape: textures/golden_creeper_cape.png
+  magmacube_cape: textures/magmacube_cape.png
+  migrator_cape: textures/migrator_cape.png
+  minecon2016_cape: textures/minecon2016_cape.png
+  minecon_2019_cape: textures/minecon_2019_cape.png
+  mojang_studios_cape: textures/mojang_studios_cape.png
+  mojiro_cape: textures/mojiro_cape.png
+  netherite_cape: textures/netherite_cape.png
+  pancake_cape: textures/pancake_cape.png
+  pride_cape: textures/pride_cape.png
+  prismarine_cape: textures/prismarine_cape.png
+  scrolls_cape: textures/scrolls_cape.png
+  slime_cape: textures/slime_cape.png
+  smooth_creeper_cape: textures/smooth_creeper_cape.png
+  spade_cape: textures/spade_cape.png
+  swords_cape: textures/swords_cape.png
+  trans_cape: textures/trans_cape.png
+  traslator_japanese_cape: textures/traslator_japanese_cape.png

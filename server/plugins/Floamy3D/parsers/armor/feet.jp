@@ -1,11 +1,13 @@
 match *:*left_shoe* *:*left_foot*
 rotatesc y -90
-rotate x -90
+rotate x 90
 rotatesc z -90
 translatesc -12 0 0
 cube *
 switchface east west
-flipface south
+flipface north
+switchface north south
+
 
 match *:*right_shoe* *:*right_foot*
 rotatesc y 90

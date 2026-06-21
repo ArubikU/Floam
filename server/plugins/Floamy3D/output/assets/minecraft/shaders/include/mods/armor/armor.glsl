@@ -767,10 +767,18 @@ default: {
     int fdw, fdiy, fddy; fd_grid(fdw, fdiy, fddy);
     int fds, fdc; fd_index(cemi, fdw, fdiy, fds, fdc);
     for (int fdi = 0; fdi < fdc; fdi++) {
-        vec3 _p, _s; mat3 _R; vec4 _u, _d, _n, _w, _so, _e;
-        fd_box(fds + fdi, fdw, fddy, RelativeCords, _p, _s, _R, _u, _d, _n, _w, _so, _e);
-        color = sBoxWithRotation(_R * (-center + _p * modelSize), _R * dirTBN, _s * modelSize,
-                TBN * inverse(_R), color, minT, _u, _d, _n, _w, _so, _e, 2., 2., 2., 2., 2., 2., true);
+        vec3 _p, _s; mat3 _R;
+        fd_box_geo(fds + fdi, fdw, fddy, _p, _s, _R);
+        vec3 _ro = _R * (-center + _p * modelSize + (isGui == 1 ? cem_modelFrag * TBN : vec3(0.0)));
+        vec3 _rd = _R * dirTBN;
+        vec3 _sz = _s * modelSize;
+        vec3 _nrm; vec3 _bi = boxIntersect(_ro, _rd, _sz, _nrm, true);
+        if (_bi.z < minT) {
+            vec4 _u, _d, _n, _w, _so, _e;
+            fd_box_faces(fds + fdi, fdw, fddy, RelativeCords, _u, _d, _n, _w, _so, _e);
+            color = sBoxWithRotation(_ro, _rd, _sz,
+                    TBN * inverse(_R), color, minT, _u, _d, _n, _w, _so, _e, 2., 2., 2., 2., 2., 2., true);
+        }
     }
     break;
 }

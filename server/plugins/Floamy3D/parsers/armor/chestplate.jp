@@ -7,6 +7,7 @@ rotatesc z -90
 translatesc -12 0 0
 cube *
 flipface south
+flipface west
 flipface up v
 
 switchface up down

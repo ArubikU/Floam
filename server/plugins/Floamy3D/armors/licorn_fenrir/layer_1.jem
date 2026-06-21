@@ -88,7 +88,16 @@
 					"mirrorTexture": "u",
 					"boxes": [
 						{
-							"coordinates": [-12, 13, -3, 3, 5, 6],
+							"coordinates": [-12, 13, -3, 3, 5, 0],
+							"uvNorth": [52, 3, 55, 8],
+							"uvEast": [55, 2, 58, 7],
+							"uvSouth": [55, 3, 52, 8],
+							"uvWest": [55, 2, 58, 7],
+							"uvUp": [55, 2, 58, 7],
+							"uvDown": [55, 2, 58, 7]
+						},
+						{
+							"coordinates": [-12, 13, 3, 3, 5, 0],
 							"uvNorth": [52, 3, 55, 8],
 							"uvEast": [55, 2, 58, 7],
 							"uvSouth": [55, 3, 52, 8],
@@ -101,7 +110,7 @@
 				{
 					"id": "bone4",
 					"invertAxis": "xy",
-					"translate": [-7.1, 24.35, -0.7],
+					"translate": [-8.18239, 27.17843, 1.91313],
 					"rotate": [0, -22.5, 0],
 					"submodels": [
 						{
@@ -110,8 +119,8 @@
 							"translate": [0, 0, 0],
 							"rotate": [45, 0, 0],
 							"boxes": [
-								{"coordinates": [-1, -0.45, -1.5, 2, 6, 3], "textureOffset": [30, 1]},
-								{"coordinates": [-1, 3.45, -2, 2, 4, 4], "textureOffset": [26, 10], "sizeAdd": -0.025}
+								{"coordinates": [-1, -4.45, -1.5, 2, 6, 3], "textureOffset": [30, 1]},
+								{"coordinates": [-1, -0.55, -2, 2, 4, 4], "textureOffset": [26, 10], "sizeAdd": -0.025}
 							]
 						}
 					]
@@ -130,7 +139,16 @@
 			"boxes": [
 				{"coordinates": [4, 21, -3, 5, 4, 6], "textureOffset": [41, 15], "sizeAdd": 0.1},
 				{
-					"coordinates": [9, 13, -3, 3, 5, 6],
+					"coordinates": [9, 13, -3, 3, 5, 0],
+					"uvNorth": [55, 3, 52, 8],
+					"uvEast": [58, 2, 55, 7],
+					"uvSouth": [52, 3, 55, 8],
+					"uvWest": [58, 2, 55, 7],
+					"uvUp": [58, 2, 55, 7],
+					"uvDown": [58, 2, 55, 7]
+				},
+				{
+					"coordinates": [9, 13, 3, 3, 5, 0],
 					"uvNorth": [55, 3, 52, 8],
 					"uvEast": [58, 2, 55, 7],
 					"uvSouth": [52, 3, 55, 8],
@@ -144,7 +162,7 @@
 				{
 					"id": "bone12",
 					"invertAxis": "xy",
-					"translate": [7.1, 24.35, -0.7],
+					"translate": [8.18239, 27.17843, 1.91313],
 					"rotate": [0, 22.5, 0],
 					"submodels": [
 						{
@@ -154,8 +172,8 @@
 							"translate": [0, 0, 0],
 							"rotate": [45, 0, 0],
 							"boxes": [
-								{"coordinates": [-1, -0.45, -1.5, 2, 6, 3], "textureOffset": [30, 1]},
-								{"coordinates": [-1, 3.45, -2, 2, 4, 4], "textureOffset": [26, 10], "sizeAdd": -0.025}
+								{"coordinates": [-1, -4.45, -1.5, 2, 6, 3], "textureOffset": [30, 1]},
+								{"coordinates": [-1, -0.55, -2, 2, 4, 4], "textureOffset": [26, 10], "sizeAdd": -0.025}
 							]
 						}
 					]

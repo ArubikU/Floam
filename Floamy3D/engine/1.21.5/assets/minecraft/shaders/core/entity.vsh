@@ -34,6 +34,7 @@ out vec2 texCoord0;
 out vec4 normal;
 out vec4 cem_pos1, cem_pos2, cem_pos3, cem_pos4;
 out vec3 cem_glPos;
+out vec3 cem_modelFrag; // fragment model-space pos (ortho parallel-ray origin for GUI)
 out vec3 cem_uv1, cem_uv2;
 out vec4 cem_lightMapColor;
 
@@ -158,7 +159,7 @@ void main() {
     bool isPartTwo = (ch0 == 255 && ch1 == 255 && ch2 == 255 && ch3 == 255);
 
     // Only run CEM logic if not in GUI
-    if (isGui == 0 && (isPartOne || isPartTwo)) {
+    if (isPartOne || isPartTwo) {   // CEM also in GUI/inventory (ortho handled below)
         float RVC_0 = getChannel(RelativeCords,ivec2(63,31), 0);
         float RVC_1 = getChannel(RelativeCords,ivec2(63,31), 1);
         float RVC_2 = getChannel(RelativeCords,ivec2(63,31), 2);
@@ -179,14 +180,34 @@ void main() {
         int removeAll = 0;
 
 
-        int cube = (gl_VertexID / 24) % 10;
+        // Part TYPE from UV region (batch-safe, count-independent). L/R from sign(Position.x):
+        // if Position is model-local (entities not baked-batched) this distinguishes the mirrored
+        // left/right limbs reliably. Tune the sign if L/R come out swapped.
+        vec2 _uv = uv;
+        bool _head = _uv.y < 16.0;
+        bool _leg  = !_head && _uv.x < 16.0;
+        bool _body = !_head && _uv.x >= 16.0 && _uv.x < 40.0;
+        bool _arm  = !_head && _uv.x >= 40.0;
+        // L/R via gl_VertexID parity: right_arm & left_arm are CONSECUTIVE cubes (MC renders body,
+        // Rarm, Larm, Rleg, Lleg), so the ordinal parity always separates the two limbs of a pair —
+        // batch-offset-tolerant AND camera-independent (no flicker, unlike baked Position). Even = left
+        // (entities starting on even cube counts stay consistent). Flip the test if L/R come swapped.
+        bool _left = ((gl_VertexID / 24) % 2) == 1;
+        int cube = -1;
+        if (isPartOne) {
+            if (_body)      cube = STASIS_CHESTPLATE;
+            else if (_arm)  cube = _left ? STASIS_LEFT_ARM  : STASIS_RIGHT_ARM;
+            else if (_leg)  cube = _left ? STASIS_RIGHT_BOOT : STASIS_LEFT_BOOT; // feet: inverted parity vs arms
+        } else {
+            if (_body)      cube = STASIS_INNER_ARMOR;
+            else if (_leg)  cube = _left ? STASIS_LEFT_LEG : STASIS_RIGHT_LEG;
+        }
         bodypart = cube;
         
-        #moj_import <mods/armor/setup.glsl>
         
         #moj_import <mods/armor/armor.glsl>
         
-        if(face==TOP_FACE){
+        if(face == (isGui == 1 ? NORTH_FACE : TOP_FACE)){ // GUI: front-face billboard (covers + non-degenerate dead-front)
             cem_reverse = 0;
             corner = corner.yx;
             cem_size = 1;

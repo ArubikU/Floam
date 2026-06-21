@@ -10,6 +10,9 @@
 #moj_import <emissive_utils.glsl>
 #moj_import <mods/armor/armorparts.glsl>
 #moj_import <mods/parts.glsl>
+#moj_import <cem_locs.glsl>
+#moj_import <mods/redefine.glsl>
+#moj_import <floamy/registry/defines.glsl>
 
 #define INV_TEX_RES_SIX (1.0 / 64)
 #define INV_TEX_RES_THREE (1.0 / 32)
@@ -31,6 +34,7 @@ out vec2 texCoord0;
 out vec4 normal;
 out vec4 cem_pos1, cem_pos2, cem_pos3, cem_pos4;
 out vec3 cem_glPos;
+out vec3 cem_modelFrag; // fragment model-space pos (ortho parallel-ray origin for GUI)
 out vec3 cem_uv1, cem_uv2;
 out vec4 cem_lightMapColor;
 
@@ -156,58 +160,77 @@ void main() {
     bool isPartOne = (ch0 == 0 && ch1 == 0 && ch2 == 0 && ch3 == 255);
     bool isPartTwo = (ch0 == 255 && ch1 == 255 && ch2 == 255 && ch3 == 255);
 
-    // Only run CEM logic if not in GUI
-    if (isGui == 0 && (isPartOne || isPartTwo)) {
-        float RVC_0 = getChannel(RelativeCords,ivec2(63,31), 0);
-        float RVC_1 = getChannel(RelativeCords,ivec2(63,31), 1);
-        float RVC_2 = getChannel(RelativeCords,ivec2(63,31), 2);
-        if(RVC_0==0 && RVC_1==0 && RVC_2==0){
-            return;
+    // ARMOR = leather layer (isPartOne/Two markers). COSMETICS = the player's OWN skin (not leather,
+    // no armor marker) -> detected by player part + the per-cosmetic marker stamped into the skin.
+    bool _leather = all(equal(texelFetch(Sampler0, ivec2(0,0), 0), vec4(1.0)));
+    bool isPlayer = !_leather && !isPartOne && !isPartTwo;
+    if (isPartOne || isPartTwo || isPlayer) {
+        float RVC_0 = 0.0, RVC_1 = 0.0, RVC_2 = 0.0;   // outer scope: armor.glsl (below) references these
+        if (!isPlayer) {
+            RVC_0 = getChannel(RelativeCords,ivec2(63,31), 0);
+            RVC_1 = getChannel(RelativeCords,ivec2(63,31), 1);
+            RVC_2 = getChannel(RelativeCords,ivec2(63,31), 2);
+            if(RVC_0==0 && RVC_1==0 && RVC_2==0){ return; }
         }
-        //texture things
         vec2 texSize = textureSize(Sampler0, 0);
         vec2 uv = floor(texCoord0 * texSize);
-        //make it relative
         uv = uv-vec2(RelativeCords.x*64,RelativeCords.y*32);
-        // CEM logic
         const vec2[4] corners = vec2[4](vec2(0), vec2(0, 1), vec2(1, 1), vec2(1, 0));
         vec2 corner = corners[gl_VertexID % 4];
-
         int face = (gl_VertexID / 4) % 6;
-
         int removeAll = 0;
+        int cube = -1;
 
-
-        int cube = (gl_VertexID / 24) % 10;
-        bodypart = cube;
-        
-        #moj_import <mods/armor/setup.glsl>
-        
-        #moj_import <mods/armor/armor.glsl>
-        
-        if(face==TOP_FACE){
-            cem_reverse = 0;
-            corner = corner.yx;
-            cem_size = 1;
-        }else{
-            if(removeAll==1){
-                markforremove = 1;
-                gl_Position = vec4(0,0,0,1);
-                overlayColor = vec4(0,0,0,0);
-                return;
-            }else{
-              bodypart = -1;
-              cems = ivec4(-1);
+        if (isPlayer) {
+            // player's own skin -> cosmetics. Player part = the model cube ordinal (cem_locs: 12 parts).
+            cube = (gl_VertexID / 24) % 12;
+            bodypart = cube;
+            #moj_import <floamy/registry/detect.glsl>
+        } else {
+            vec2 _uv = uv;
+            bool _head = _uv.y < 16.0;
+            bool _leg  = !_head && _uv.x < 16.0;
+            bool _body = !_head && _uv.x >= 16.0 && _uv.x < 40.0;
+            bool _arm  = !_head && _uv.x >= 40.0;
+            bool _left = ((gl_VertexID / 24) % 2) == 1;
+            if (isPartOne) {
+                if (_body)      cube = STASIS_CHESTPLATE;
+                else if (_arm)  cube = _left ? STASIS_LEFT_ARM  : STASIS_RIGHT_ARM;
+                else if (_leg)  cube = _left ? STASIS_RIGHT_BOOT : STASIS_LEFT_BOOT;
+            } else {
+                if (_body)      cube = STASIS_INNER_ARMOR;
+                else if (_leg)  cube = _left ? STASIS_LEFT_LEG : STASIS_RIGHT_LEG;
             }
+            bodypart = cube;
+            #moj_import <mods/armor/armor.glsl>
         }
 
-        if (gl_VertexID / 4 == 3)
-            corner.x = 1 - corner.x;
-
-        if (cems[0] > 0 || cems[1] > 0 || cems[2] > 0 || cems[3] > 0 )
-        {
-            cem=199;
-            #moj_import <cem/vert_setup.glsl>
+        // Only billboard + ray-march when something was actually detected. Otherwise the skin/entity
+        // renders normally (critical for the player: un-cosmeticked bodies must NOT be touched).
+        bool active = (cems[0] > 0 || cems[1] > 0 || cems[2] > 0 || cems[3] > 0);
+        if (active) {
+            if(face == (isGui == 1 ? NORTH_FACE : TOP_FACE)){
+                cem_reverse = 0;
+                corner = corner.yx;
+                cem_size = 1;
+            }else{
+                if(removeAll==1){
+                    markforremove = 1;
+                    gl_Position = vec4(0,0,0,1);
+                    overlayColor = vec4(0,0,0,0);
+                    return;
+                }else{
+                  bodypart = -1;
+                  cems = ivec4(-1);
+                }
+            }
+            if (gl_VertexID / 4 == 3)
+                corner.x = 1 - corner.x;
+            if (cems[0] > 0 || cems[1] > 0 || cems[2] > 0 || cems[3] > 0 )
+            {
+                cem=199;
+                #moj_import <cem/vert_setup.glsl>
+            }
         }
     }
 }
