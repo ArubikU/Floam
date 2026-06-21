@@ -1,0 +1,94 @@
+{
+	"credit": "Made with Blockbench",
+	"textureSize": [64, 32],
+	"texture": "chainmail_layer_1.png",
+	"models": [
+		{
+			"part": "head",
+			"id": "head",
+			"invertAxis": "xy",
+			"translate": [0, -24, 0]
+		},
+		{
+			"part": "body",
+			"id": "body",
+			"invertAxis": "xy",
+			"translate": [0, -24, 0],
+			"boxes": [
+				{"coordinates": [-4, 12, -2, 8, 12, 4], "textureOffset": [16, 16], "sizeAdd": 0.75}
+			]
+		},
+		{
+			"part": "left_shoe",
+			"id": "left_shoe",
+			"invertAxis": "xy",
+			"mirrorTexture": "u",
+			"translate": [1.9, -12, 0],
+			"boxes": [
+				{"coordinates": [-3.9, 0, -2, 4, 12, 4], "textureOffset": [0, 16], "sizeAdd": 0.75},
+				{"coordinates": [-4.9, 5, -3, 6, 1, 6], "textureOffset": [0, 0]}
+			],
+			"submodels": [
+				{
+					"id": "left_shoe3",
+					"invertAxis": "xy",
+					"mirrorTexture": "u",
+					"translate": [-1.9, 4, 0],
+					"rotate": [-22.5, 0, 0],
+					"boxes": [
+						{"coordinates": [-3, -1, -4, 6, 2, 4], "textureOffset": [29, 0]}
+					]
+				}
+			]
+		},
+		{
+			"part": "right_shoe",
+			"id": "right_shoe",
+			"invertAxis": "xy",
+			"translate": [-1.9, -12, 0],
+			"boxes": [
+				{"coordinates": [-1.1, 5, -3, 6, 1, 6], "textureOffset": [0, 0]},
+				{"coordinates": [-0.1, 0, -2, 4, 12, 4], "textureOffset": [0, 16], "sizeAdd": 0.75}
+			],
+			"submodels": [
+				{
+					"id": "right_shoe4",
+					"invertAxis": "xy",
+					"translate": [1.9, 4, 0],
+					"rotate": [-22.5, 0, 0],
+					"boxes": [
+						{"coordinates": [-3, -1, -4, 6, 2, 4], "textureOffset": [29, 0]}
+					]
+				},
+				{
+					"id": "right_shoe2",
+					"invertAxis": "xy",
+					"translate": [4.9, 4.2, 0.1],
+					"rotate": [-45, 0, 0],
+					"boxes": [
+						{"coordinates": [-1, -1, -1, 2, 2, 2], "textureOffset": [19, 0]}
+					]
+				}
+			]
+		},
+		{
+			"part": "left_arm",
+			"id": "left_arm",
+			"invertAxis": "xy",
+			"mirrorTexture": "u",
+			"translate": [5, -22, 0],
+			"boxes": [
+				{"coordinates": [-8, 12, -2, 4, 12, 4], "textureOffset": [40, 16], "sizeAdd": 0.775}
+			]
+		},
+		{
+			"part": "right_arm",
+			"id": "right_arm",
+			"invertAxis": "xy",
+			"translate": [-5, -22, 0],
+			"boxes": [
+				{"coordinates": [4, 12, -2, 4, 12, 4], "textureOffset": [40, 16], "sizeAdd": 0.75}
+			]
+		}
+	]
+}

@@ -1,0 +1,14 @@
+id: refmap
+enabled: true
+internal-color:
+  r: 200
+  g: 100
+  b: 60
+color:
+  r: 200
+  g: 100
+  b: 60
+optifine_layer_1: layer_1.jem
+optifine_layer_2: layer_2.jem
+vanilla_layer_1: layer_1.png
+vanilla_layer_2: layer_2.png

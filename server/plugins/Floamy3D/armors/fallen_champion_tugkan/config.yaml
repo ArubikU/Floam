@@ -1,0 +1,32 @@
+enabled: true
+
+versions:
+- "1_21_3" 
+- old 
+- optifine
+color:
+  r: 255
+  g: 255
+  b: 120
+internal-color:
+  r: 180
+  g: 0
+  b: 0
+id: tugkan:fallen_champion
+glsl-variables: #Starts from 1000 for offset things
+  - FALLEN_CHAMPION_CHESTPLATE
+  - FALLEN_CHAMPION_RIGHT_ARM
+  - FALLEN_CHAMPION_LEFT_ARM
+  - FALLEN_CHAMPION_RIGHT_FEET
+  - FALLEN_CHAMPION_LEFT_FEET
+  - FALLEN_CHAMPION_RIGHT_LEG
+  - FALLEN_CHAMPION_LEFT_LEG
+  - FALLEN_CHAMPION_INNER_ARMOR
+glsl-file: armor.glsl
+vanilla_layer_1: layer_1.png
+vanilla_layer_2: layer_2.png
+
+optifine_layer_1: layer_1.jem
+optifine_layer_2: layer_2.jem
+optifine_layer_1_texture: layer_1.png
+optifine_layer_2_texture: layer_2.png

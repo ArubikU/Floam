@@ -1,0 +1,49 @@
+{
+	"credit": "Made with Blockbench",
+	"textureSize": [64, 32],
+	"texture": "layer_2.png",
+	"models": [
+		{
+			"part": "waist",
+			"id": "waist",
+			"invertAxis": "xy",
+			"translate": [0, -24, 0],
+			"boxes": [
+				{"coordinates": [-4, 12, -2, 8, 12, 4], "textureOffset": [16, 16], "sizeAdd": 0.5},
+				{"coordinates": [-1.5, 9, -3, 3, 7, 1], "textureOffset": [0, 0]}
+			],
+			"submodels": [
+				{
+					"id": "bone",
+					"invertAxis": "xy",
+					"translate": [0, 8.4, -2.5],
+					"rotate": [0, 0, 45],
+					"boxes": [
+						{"coordinates": [-1.5, -1.5, -0.5, 3, 3, 1], "textureOffset": [56, 0], "sizeAdd": -0.025}
+					]
+				}
+			]
+		},
+		{
+			"part": "left_leg",
+			"id": "left_leg",
+			"invertAxis": "xy",
+			"mirrorTexture": "u",
+			"translate": [1.9, -12, 0],
+			"boxes": [
+				{"coordinates": [-3.9, 0, -2, 4, 12, 4], "textureOffset": [0, 16], "sizeAdd": 0.525},
+				{"coordinates": [-5.9, 6, -2, 2, 4, 4], "textureOffset": [22, 0]}
+			]
+		},
+		{
+			"part": "right_leg",
+			"id": "right_leg",
+			"invertAxis": "xy",
+			"translate": [-1.9, -12, 0],
+			"boxes": [
+				{"coordinates": [-0.1, 0, -2, 4, 12, 4], "textureOffset": [0, 16], "sizeAdd": 0.5},
+				{"coordinates": [3.9, 6, -2, 2, 4, 4], "textureOffset": [22, 0]}
+			]
+		}
+	]
+}

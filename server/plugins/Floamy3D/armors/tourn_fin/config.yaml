@@ -1,0 +1,110 @@
+enabled: true
+
+versions:
+- "1_21_3" #refeer to post entity/equipment/humanoid
+- old #refeer to old method by lessypants
+- optifine
+
+color:
+  r: 255
+  g: 1
+  b: 255
+internal-color:
+  r: 150
+  g: 0
+  b: 0
+
+id: tourne:fin_armor
+glsl-variables: #Starts from 1000 for offset things
+  - TOURNE_FIN_CHESTPLATE
+  - TOURNE_FIN_RIGHT_ARM
+  - TOURNE_FIN_LEFT_ARM
+  - TOURNE_FIN_RIGHT_FEET
+  - TOURNE_FIN_LEFT_FEET
+  - TOURNE_FIN_RIGHT_LEG
+  - TOURNE_FIN_LEFT_LEG
+  - TOURNE_FIN_INNER_ARMOR
+
+
+#it should replace the "#define glsl_variables" to coun that string as the placeholder
+
+#should write on assets\minecraft\shaders\include\mods\armor\tourne\fin_armor
+
+#write on assets/minecraft/shaders/include/mods/armor/parts.glsl
+#a import be like #moj_import<mods/armor/tourne/fin_armor/parts.glsl> referring to the individual parts file
+#be like "#define {STRING_ID} {NUMERICAL_ID}"
+
+
+glsl-file-vsh: armor.glsl
+glsl-file: armor.glsl
+
+#the file should be copied to assets\minecraft\shaders\include\mods\armor\tourne\fin_armor 
+#and later add to the imports on  assets\minecraft\shaders\include\mods\armor\armor.glsl
+#as #moj_import <mods/armor/tourne/fin_armor/armor.glsl>
+
+vanilla_layer_1: layer_1.png
+vanilla_layer_2: layer_2.png
+#the textures should be copied if 1_21_3 to as {namespace}_{id}_{layer}
+#assets\minecraft\textures\entity\equipment
+#humanoid if layer 1 and humanoid_leggings if layer 2
+#also build a equipment file on the respective path
+#like assets\minecraft\equipment\{namespace}_{id}.json
+#{
+#    "layers": {
+#        "humanoid": [
+#            {
+#                "texture": "minecraft:{namespace}_{id}_{layer}"
+#            }
+#        ],
+#        "humanoid_leggings": [
+#            {
+#                "texture": "minecraft:{namespace}_{id}_{layer}"
+#            }
+#
+#        ]
+#    }
+#}
+
+#for old versions should add to the main lether texture to later ve detected by lessypants and writed the new cordinates map to
+#assets\minecraft\shaders\include\armorcords.glsl
+
+#COLOR_ARMOR(255, 255, 255) {
+#    cords = vec2(0, 0);
+#}
+#COLOR_ARMOR(255, 0, 255) {
+#    cords = vec2(1, 0);
+#}
+#COLOR_ARMOR(255, 1, 255) {
+#    cords = vec2(0, 1);
+#}
+
+#more examples of use in Lessypants folder
+
+
+optifine_layer_1: outer_armor.jem
+optifine_layer_2: inner_armor.jem
+optifine_layer_1_texture: layer_1.png
+optifine_layer_2_texture: layer_2.png
+
+#the cem_layer files should be paste to assets/tourne/textures/armor/cem/fin_armor/{texture_name}
+#and add to the jem files the path "texture": "tourne:armor/cem/fin_armor/{texture_name}"
+
+#copy and paste the jems to assets\minecraft\emf\cem
+#as something like outer_armor{armor_id}.jem
+#the id is the internal numeric id to the actual armor starting from 2
+
+#models.{referencial_number_id} = {armor_id}
+#nbt.{referencial_number_id}.Inventory = raw:iregex:.*Slot:103b.*?ArmorCustom:"Tournefin_armor".*?
+#models.{referencial_number_id+1} = {armor_id}
+#nbt.{referencial_number_id+1}.Inventory = raw:iregex:.*Slot:102b.*?ArmorCustom:"Tournefin_armor".*?
+#models.{referencial_number_id+2} = {armor_id}
+#nbt.{referencial_number_id+2}.Inventory = raw:iregex:.*Slot:101b.*?ArmorCustom:"Tournefin_armor".*?
+#models.{referencial_number_id+3} = {armor_id}
+#nbt.{referencial_number_id+3}.Inventory = raw:iregex:.*Slot:100b.*?ArmorCustom:"Tournefin_armor".*?
+
+#assets\minecraft\emf\cem\inner_armor.properties
+#assets\minecraft\emf\cem\outer_armor.properties
+#we should need to write these string the properties files
+#referencial_number_id is a internal id asigned starting from 1 , be like 
+#referencial_number_id = 4*(armor_id-2)+1
+

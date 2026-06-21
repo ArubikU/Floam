@@ -1,0 +1,29 @@
+enabled: true
+
+versions:
+- "1_21_3" 
+- old 
+- optifine
+color:
+  r: 255
+  g: 126
+  b: 255
+internal-color:
+  r: 0
+  g: 0
+  b: 186
+id: frost:warden_armor
+glsl-variables: #Starts from 1000 for offset things
+  - WARDEN_CHESTPLATE
+  - WARDEN_RIGHT_ARM
+  - WARDEN_LEFT_ARM
+  - WARDEN_RIGHT_LEG
+  - WARDEN_LEFT_LEG
+glsl-file: armor.glsl
+vanilla_layer_1: layer_1.png
+vanilla_layer_2: layer_2.png
+
+optifine_layer_1: layer_1.jem
+optifine_layer_2: layer_2.jem
+optifine_layer_1_texture: layer_1.png
+optifine_layer_2_texture: layer_2.png

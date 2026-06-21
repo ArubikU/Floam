@@ -1,0 +1,27 @@
+# ============================================================================
+# Floamy3D — JEM -> shader transform DSL (hot-reloaded by /floamy3d build, no jar
+# recompile). Files are split so a growing hand-tuned algorithm stays manageable.
+#   parsers/_*.jp        shared: global `var` defs + rules applied to BOTH pipelines
+#   parsers/armor/*.jp   armor parts          (base PIX, scale 0.75)
+#   parsers/cosmetic/*.jp player-part cosmetics (their own algorithm: base none, scale 1)
+# The Java side only does the structural JEM walk (box coords; submodels compose
+# translate+rotate; worldCentre = framePos + frameRot*localCentre;
+# emitPos = transpose(frameRot)*worldCentre; faces from uv* or textureOffset).
+#
+# match key = "<armorId>:<partName>"  (e.g. licorn_fenrir:left_shoe). So:
+#   match *:*shoe*           -> all feet, any armor
+#   match masaki_spike:*     -> one armor, all parts   (per-armor post-processors)
+#   match masaki_spike:*foot* -> one armor's feet
+#
+# PART scope (the frame):
+#   var NAME <expr>            global constant -> $NAME in any expr
+#   translate <x> <y> <z>  |  set t.x|t.y|t.z <e>  |  mul t.x|t.y|t.z <e>
+#   rotate x|y|z <deg>     |  invert x|y|z [on|off] |  mirror [on|off]
+#   base PIX|none          |  scale <e>  |  sizeadd <e>  |  bone <STASIS_NAME>
+# BOX scope (per cube; learned rule: a box seats at posZ = -sizeY):
+#   cube <idx|*>               select which cube(s) the next box ops target
+#   seat                       bz.z = -sz.y   (sit the box on the bone by its height)
+#   bset bz.x|bz.y|bz.z <e>  |  btranslate <x> <y> <z>
+# expr tokens: t.x t.y t.z (frame)  sz.x sz.y sz.z (box half-size)  bz.x bz.y bz.z (box pos)
+#              idx (cube index)  $VAR  numbers  + - * / ( )
+# ============================================================================

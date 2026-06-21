@@ -1,0 +1,32 @@
+enabled: true
+
+versions:
+- "1_21_3" 
+- old 
+- optifine
+color:
+  r: 255
+  g: 181
+  b: 255
+internal-color:
+  r: 61
+  g: 0
+  b: 0
+id: arubik:cowboy_pack
+glsl-variables: #Starts from 1000 for offset things
+  - ARUBIK_COWBOY_CHESTPLATE
+  - ARUBIK_COWBOY_RIGHT_ARM
+  - ARUBIK_COWBOY_LEFT_ARM
+  - ARUBIK_COWBOY_RIGHT_FEET
+  - ARUBIK_COWBOY_LEFT_FEET
+  - ARUBIK_COWBOY_RIGHT_LEG
+  - ARUBIK_COWBOY_LEFT_LEG
+  - ARUBIK_COWBOY_INNER_ARMOR
+glsl-file: armor.glsl
+vanilla_layer_1: layer_1.png
+vanilla_layer_2: layer_2.png
+
+optifine_layer_1: layer_1.jem
+optifine_layer_2: layer_2.jem
+optifine_layer_1_texture: layer_1.png
+optifine_layer_2_texture: layer_2.png

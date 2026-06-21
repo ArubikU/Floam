@@ -1,0 +1,31 @@
+enabled: true
+versions:
+- "1_21_3" #refeer to post entity/equipment/humanoid
+- old #refeer to old method by lessypants
+color:
+  r: 255
+  g: 8
+  b: 255
+internal-color:
+  r: 0
+  g: 180
+  b: 0
+id: masaki:spike
+glsl-variables: 
+  - MASAKI_SPIKE_CHESTPLATE
+  - MASAKI_SPIKE_RIGHT_ARM
+  - MASAKI_SPIKE_LEFT_ARM
+  - MASAKI_SPIKE_RIGHT_FEET
+  - MASAKI_SPIKE_LEFT_FEET
+  - MASAKI_SPIKE_RIGHT_LEG
+  - MASAKI_SPIKE_LEFT_LEG
+
+is-copy: false
+glsl-file-vsh: armor.glsl
+glsl-file: armor.glsl
+vanilla_layer_1: layer_1.png
+vanilla_layer_2: layer_2.png
+optifine_layer_1: layer_1.jem
+optifine_layer_2: layer_2.jem
+optifine_layer_1_texture: layer_1.png
+optifine_layer_2_texture: layer_2.png

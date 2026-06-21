@@ -1,0 +1,32 @@
+enabled: true
+
+versions:
+- "1_21_3" 
+- old 
+- optifine
+color:
+  r: 255
+  g: 121
+  b: 255
+internal-color:
+  r: 0
+  g: 0
+  b: 181
+id: cassuto:armor2_pack
+glsl-variables: #Starts from 1000 for offset things
+  - ARMOR2_CHESTPLATE
+  - ARMOR2_RIGHT_ARM
+  - ARMOR2_LEFT_ARM
+  - ARMOR2_RIGHT_FEET
+  - ARMOR2_LEFT_FEET
+  - ARMOR2_RIGHT_LEG
+  - ARMOR2_LEFT_LEG
+  - ARMOR2_INNER_ARMOR
+glsl-file: armor.glsl
+vanilla_layer_1: layer_1.png
+vanilla_layer_2: layer_2.png
+
+optifine_layer_1: layer_1.jem
+optifine_layer_2: layer_2.jem
+optifine_layer_1_texture: layer_1.png
+optifine_layer_2_texture: layer_2.png

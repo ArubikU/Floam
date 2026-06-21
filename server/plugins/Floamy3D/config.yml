@@ -1,0 +1,8 @@
+# Floamy3D configuration
+
+# MineSkin API key (optional) — raises skin-signing rate limits for runtime cosmetics.
+# Get one at https://mineskin.org/account
+mineskin-api-key: ""
+
+# Default animation speed stamped into cosmetic markers (green channel, 0-255).
+default-animation-speed: 128

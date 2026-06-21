@@ -1,0 +1,29 @@
+enabled: true
+
+versions:
+- "1_21_3"
+- optifine
+color:
+  r: 255
+  g: 193
+  b: 255
+internal-color:
+  r: 73
+  g: 0
+  b: 0
+id: zekern:sentinel
+glsl-variables: #Starts from 1000 for offset things
+  - ZEKERN_SENTINEL_CHESTPLATE
+  - ZEKERN_SENTINEL_RIGHT_ARM
+  - ZEKERN_SENTINEL_LEFT_ARM
+  - ZEKERN_SENTINEL_RIGHT_LEG
+  - ZEKERN_SENTINEL_LEFT_LEG
+  - ZEKERN_SENTINEL_INNER_ARMOR
+glsl-file: armor.glsl
+vanilla_layer_1: layer_1.png
+vanilla_layer_2: layer_2.png
+
+optifine_layer_1: layer_1.jem
+optifine_layer_2: layer_2.jem
+optifine_layer_1_texture: layer_1.png
+optifine_layer_2_texture: layer_2.png

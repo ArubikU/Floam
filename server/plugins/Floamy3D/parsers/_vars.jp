@@ -1,0 +1,19 @@
+# Shared globals (visible in armor/ and cosmetic/ as $NAME).
+# Per-part scales LEARNED from the hand-tuned packs (fenrir, masaki, tugkan, started,
+# kirito): artists scale legs/feet bigger (~0.9) and chest/arms smaller (~0.8).
+# Per-part Z-LIFT, DERIVED by matching every JEM box to its hand-made box across all
+# packs (median of handmade.pos - raw emit). These reproduce the artist placement from
+# the JEM geometry. Applied as `btranslate 0 0 $LIFT_*` (emit-space, after PIX).
+var LIFT_FEET   -12
+var LIFT_LEG    -11
+var LIFT_INNER  -12
+var LIFT_CHEST  -12
+var LIFT_ARM    -8
+var SCALE_BASE  0.8
+var SCALE_FEET  0.85
+var SCALE_LEG   0.95
+var SCALE_CHEST 0.80
+var SCALE_INNER 0.95
+var SCALE_ARM   0.80
+var SCALE_HELM  0.85
+var ARM_ANGLE   22.5     # arms are often angled ~PIY12 (22.5 deg on Y)

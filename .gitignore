@@ -1,0 +1,35 @@
+# build outputs
+**/build/
+**/.gradle/
+*.class
+
+# server runtime (heavy / regenerable)
+server/world/
+server/world_nether/
+server/world_the_end/
+server/logs/
+server/cache/
+server/libraries/
+server/versions/
+server/*.jar
+server/plugins/*.jar
+server/plugins/Floamy3D/engine/
+server/server.log
+server/floamy-pack.zip
+server/plugins/Floamy3D/Floamy3D.zip
+
+# jars / binaries
+*.jar
+!gradle/wrapper/gradle-wrapper.jar
+
+# os
+Thumbs.db
+.DS_Store
+
+# paper internals (huge, regenerable)
+server/plugins/.paper-remapped/
+server/plugins/.paper/
+server/plugins/bStats/
+server/plugins/spark/
+server/cache/
+server/.console-history

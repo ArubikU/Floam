@@ -1,0 +1,25 @@
+enabled: true
+versions:
+- "1_21_3" #refeer to post entity/equipment/humanoid
+- old #refeer to old method by lessypants
+color:
+  r: 255
+  g: 4
+  b: 255
+internal-color:
+  r: 180
+  g: 0
+  b: 0
+id: licorn:kirito_white
+glsl-variables: 
+  - KIRITO_CHESTPLATE
+  - KIRITO_RIGHT_ARM
+is-copy: true
+glsl-file-vsh: armor.glsl
+glsl-file: armor.glsl
+vanilla_layer_1: kiritos.png
+vanilla_layer_2: empty.png
+optifine_layer_1: kiritos.jem
+optifine_layer_2: empty.jem
+optifine_layer_1_texture: kiritos.png
+optifine_layer_2_texture: empty.png

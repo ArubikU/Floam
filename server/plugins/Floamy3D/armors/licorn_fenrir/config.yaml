@@ -1,0 +1,32 @@
+enabled: true
+versions:
+- "1_21_3" #refeer to post entity/equipment/humanoid
+- old #refeer to old method by lessypants
+color:
+  r: 255
+  g: 4
+  b: 255
+internal-color:
+  r: 0
+  g: 180
+  b: 0
+id: licorn:fenrir
+glsl-variables: 
+  - LICORN_FENRIR_CHESTPLATE
+  - LICORN_FENRIR_RIGHT_ARM
+  - LICORN_FENRIR_LEFT_ARM
+  - LICORN_FENRIR_RIGHT_FEET
+  - LICORN_FENRIR_LEFT_FEET
+  - LICORN_FENRIR_RIGHT_LEG
+  - LICORN_FENRIR_LEFT_LEG
+  - LICORN_FENRIR_INNER_ARMOR
+
+is-copy: false
+glsl-file-vsh: armor.glsl
+glsl-file: armor.glsl
+vanilla_layer_1: layer_1.png
+vanilla_layer_2: layer_2.png
+optifine_layer_1: empty.jem
+optifine_layer_2: empty.jem
+optifine_layer_1_texture: empty.png
+optifine_layer_2_texture: empty.png

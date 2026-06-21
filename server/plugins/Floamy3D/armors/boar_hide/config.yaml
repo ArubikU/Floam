@@ -1,0 +1,31 @@
+enabled: true
+
+versions:
+- "1_21_3"
+- optifine
+color:
+  r: 255
+  g: 191
+  b: 255
+internal-color:
+  r: 71
+  g: 0
+  b: 0
+id: zekern:boar_hide
+glsl-variables: #Starts from 1000 for offset things
+  - ZEKERN_BOAR_HIDE_CHESTPLATE
+  - ZEKERN_BOAR_HIDE_RIGHT_ARM
+  - ZEKERN_BOAR_HIDE_LEFT_ARM
+  - ZEKERN_BOAR_HIDE_RIGHT_FEET
+  - ZEKERN_BOAR_HIDE_LEFT_FEET
+  - ZEKERN_BOAR_HIDE_RIGHT_LEG
+  - ZEKERN_BOAR_HIDE_LEFT_LEG
+  - ZEKERN_BOAR_HIDE_INNER_ARMOR
+glsl-file: armor.glsl
+vanilla_layer_1: layer_1.png
+vanilla_layer_2: layer_2.png
+
+optifine_layer_1: layer_1.jem
+optifine_layer_2: layer_2.jem
+optifine_layer_1_texture: layer_1.png
+optifine_layer_2_texture: layer_2.png

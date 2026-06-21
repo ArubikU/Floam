@@ -1,0 +1,32 @@
+enabled: true
+
+versions:
+- "1_21_3" 
+- old 
+- optifine
+color:
+  r: 255
+  g: 180
+  b: 255
+internal-color:
+  r: 60
+  g: 0
+  b: 0
+id: kinii:durnhart_pack
+glsl-variables: #Starts from 1000 for offset things
+  - KINII_DURNHART_CHESTPLATE
+  - KINII_DURNHART_RIGHT_ARM
+  - KINII_DURNHART_LEFT_ARM
+  - KINII_DURNHART_RIGHT_FEET
+  - KINII_DURNHART_LEFT_FEET
+  - KINII_DURNHART_RIGHT_LEG
+  - KINII_DURNHART_LEFT_LEG
+  - KINII_DURNHART_INNER_ARMOR
+glsl-file: armor.glsl
+vanilla_layer_1: layer_1.png
+vanilla_layer_2: layer_2.png
+
+optifine_layer_1: layer_1.jem
+optifine_layer_2: layer_2.jem
+optifine_layer_1_texture: layer_1.png
+optifine_layer_2_texture: layer_2.png
