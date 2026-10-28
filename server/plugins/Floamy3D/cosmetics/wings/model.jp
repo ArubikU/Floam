@@ -1,0 +1,3 @@
+match wings:*
+emissive 1
+animate rot y radians(cos(gametime*1000.0)*10.0)

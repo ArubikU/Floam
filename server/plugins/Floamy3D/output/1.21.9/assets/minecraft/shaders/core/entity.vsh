@@ -1,4 +1,12 @@
 #version 330
+// MC 26.2+ batches all quads into a shared vertex buffer, so gl_VertexID no longer starts at 0 per
+// draw (it's offset by gl_BaseVertexARB). Subtract it so the cube/face/corner index math stays valid.
+#extension GL_ARB_shader_draw_parameters : enable
+#ifdef GL_ARB_shader_draw_parameters
+#define VERTEX_ID (gl_VertexID - gl_BaseVertexARB)
+#else
+#define VERTEX_ID gl_VertexID
+#endif
 
 #define VSH
 
@@ -73,13 +81,30 @@ int colorId(vec3 c) {
 }
 vec2 cords=vec2(0,0);
 
+// Real obtainable leather-armor colors (default un-dyed + 16 dyes). A vertex within tolerance of one
+// is REAL dyed leather, not a custom armor -> skip the whole CEM path and let it render as vanilla.
+bool isVanillaLeatherColor(vec3 c) {
+    ivec3 v = ivec3(c * 255.0 + 0.5);
+    ivec3 R[17] = ivec3[17](
+        ivec3(160,101,64), ivec3(249,255,254), ivec3(249,128,29), ivec3(199,78,189),
+        ivec3(58,179,218), ivec3(254,216,61), ivec3(128,199,31), ivec3(243,139,170),
+        ivec3(71,79,82),   ivec3(157,157,151),ivec3(22,156,156), ivec3(137,50,184),
+        ivec3(60,68,170),  ivec3(131,84,50),  ivec3(94,124,22),  ivec3(176,46,38), ivec3(29,29,33));
+    for (int i = 0; i < 17; i++) {
+        ivec3 d = abs(v - R[i]);
+        if (d.x <= 4 && d.y <= 4 && d.z <= 4) return true;
+    }
+    return false;
+}
+
 bool shouldApplyArmor(){
+    if (isVanillaLeatherColor(Color.rgb)) return false;   // real leather/dye -> render vanilla, no CEM
     int vertexColorId=colorId(Color.rgb);
     switch(vertexColorId){
         default:
-        
+
         #moj_import <armorcords.glsl>
-        
+
         return true;
     }
     return false;
@@ -115,7 +140,9 @@ void main() {
         ivec2 atlasSize = textureSize(Sampler0, 0);
         ivec4 fgrid = ivec4(texelFetch(Sampler0, ivec2(1,0), 0) * 255.0 + 0.5);
         vec2 armorAmount = vec2(fgrid.r, fgrid.g); // tile grid from atlas, ignores data region
-        vec2 offset = 1.0 / armorAmount;
+        // map EXACTLY 64x32 per tile using the real texture size — the data region inflates texSize.y,
+        // so 1/armorAmount overshoots into adjacent tiles for the flat (real-leather) render.
+        vec2 offset = vec2(64.0, 32.0) / vec2(atlasSize);
 
         texCoord0 *= offset;
         shouldApplyArmor();
@@ -176,23 +203,34 @@ void main() {
         vec2 uv = floor(texCoord0 * texSize);
         uv = uv-vec2(RelativeCords.x*64,RelativeCords.y*32);
         const vec2[4] corners = vec2[4](vec2(0), vec2(0, 1), vec2(1, 1), vec2(1, 0));
-        vec2 corner = corners[gl_VertexID % 4];
-        int face = (gl_VertexID / 4) % 6;
+        vec2 corner = corners[VERTEX_ID % 4];
+        int face = (VERTEX_ID / 4) % 6;
         int removeAll = 0;
         int cube = -1;
 
         if (isPlayer) {
+            // cosmetics OFF in GUI/inventory: render the player's original skin untouched.
+            if (isGui == 1) { VERTEXT_ORIGINAL(); bodypart = -1; cems = ivec4(-1); cem = 0; return; }
             // player's own skin -> cosmetics. Player part = the model cube ordinal (cem_locs: 12 parts).
-            cube = (gl_VertexID / 24) % 12;
+            cube = (VERTEX_ID / 24) % 12;
             bodypart = cube;
             #moj_import <floamy/registry/detect.glsl>
+            // RESTORE (MagicShaders pattern): a player part NOT edited by any cosmetic renders its
+            // ORIGINAL cube untouched. Without this the billboard pass eats player cubes near a cosmetic.
+            if (!(cems[0] > 0 || cems[1] > 0 || cems[2] > 0 || cems[3] > 0)) {
+                VERTEXT_ORIGINAL();
+                bodypart = -1;
+                cems = ivec4(-1);
+                cem = 0;
+                return;
+            }
         } else {
             vec2 _uv = uv;
             bool _head = _uv.y < 16.0;
             bool _leg  = !_head && _uv.x < 16.0;
             bool _body = !_head && _uv.x >= 16.0 && _uv.x < 40.0;
             bool _arm  = !_head && _uv.x >= 40.0;
-            bool _left = ((gl_VertexID / 24) % 2) == 1;
+            bool _left = ((VERTEX_ID / 24) % 2) == 1;
             if (isPartOne) {
                 if (_body)      cube = STASIS_CHESTPLATE;
                 else if (_arm)  cube = _left ? STASIS_LEFT_ARM  : STASIS_RIGHT_ARM;
@@ -203,13 +241,22 @@ void main() {
             }
             bodypart = cube;
             #moj_import <mods/armor/armor.glsl>
+            // "clean the original": for a custom armor (internal-color marker present) HIDE any cube we
+            // couldn't CEM-detect, instead of leaving the flat vanilla model peeking around the 3D armor.
+            if ((RVC_0 != 0.0 || RVC_1 != 0.0 || RVC_2 != 0.0)
+                && !(cems[0] > 0 || cems[1] > 0 || cems[2] > 0 || cems[3] > 0)) {
+                markforremove = 1; gl_Position = vec4(0, 0, 0, 1); overlayColor = vec4(0, 0, 0, 0); return;
+            }
         }
 
         // Only billboard + ray-march when something was actually detected. Otherwise the skin/entity
         // renders normally (critical for the player: un-cosmeticked bodies must NOT be touched).
         bool active = (cems[0] > 0 || cems[1] > 0 || cems[2] > 0 || cems[3] > 0);
+        // billboard face: armor uses TOP (its part is removed, so any face is fine); cosmetics (player skin)
+        // use BOTTOM so the hidden bottom is consumed + the visible faces stay. (1.21.9+ face order.)
+        int billboardFace = isGui == 1 ? NORTH_FACE : (isPlayer ? BOTTOM_FACE : TOP_FACE);
         if (active) {
-            if(face == (isGui == 1 ? NORTH_FACE : TOP_FACE)){
+            if(face == billboardFace){
                 cem_reverse = 0;
                 corner = corner.yx;
                 cem_size = 1;
@@ -220,11 +267,13 @@ void main() {
                     overlayColor = vec4(0,0,0,0);
                     return;
                 }else{
+                  // non-billboard face of the edited part -> keep the ORIGINAL player cube (don't drop it)
                   bodypart = -1;
                   cems = ivec4(-1);
+                  if (isPlayer) VERTEXT_ORIGINAL();
                 }
             }
-            if (gl_VertexID / 4 == 3)
+            if (VERTEX_ID / 4 == 3)
                 corner.x = 1 - corner.x;
             if (cems[0] > 0 || cems[1] > 0 || cems[2] > 0 || cems[3] > 0 )
             {

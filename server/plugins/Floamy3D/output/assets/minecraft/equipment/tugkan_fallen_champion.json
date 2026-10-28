@@ -1,0 +1,10 @@
+{
+  "layers" : {
+    "humanoid" : [ {
+      "texture" : "minecraft:tugkan_fallen_champion"
+    } ],
+    "humanoid_leggings" : [ {
+      "texture" : "minecraft:tugkan_fallen_champion"
+    } ]
+  }
+}

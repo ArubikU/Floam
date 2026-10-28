@@ -1,0 +1,10 @@
+{
+  "layers" : {
+    "humanoid" : [ {
+      "texture" : "minecraft:licorn_fenrir"
+    } ],
+    "humanoid_leggings" : [ {
+      "texture" : "minecraft:licorn_fenrir"
+    } ]
+  }
+}

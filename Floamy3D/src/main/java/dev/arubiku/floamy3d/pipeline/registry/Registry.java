@@ -1,5 +1,6 @@
 package dev.arubiku.floamy3d.pipeline.registry;
 
+import dev.arubiku.floamy3d.pipeline.glsl.CosmeticCodec;
 import dev.arubiku.floamy3d.pipeline.glsl.GlslEmitter;
 import dev.arubiku.floamy3d.pipeline.model.CemModel;
 import dev.arubiku.floamy3d.pipeline.model.Part;
@@ -67,24 +68,24 @@ public final class Registry {
 
         StringBuilder defines = new StringBuilder("// generated — CEM ids\n");
         StringBuilder detectRouter = new StringBuilder("// generated — cosmetic detection (VSH)\n");
-        StringBuilder modelRouter = new StringBuilder("// generated — cosmetic models (FSH)\n");
+        CosmeticCodec codec = new CosmeticCodec();   // data-driven geometry (replaces per-model macro cases)
 
         for (Entry e : entries) {
             Path dir = cosmetics.resolve(e.model.id.toLowerCase(Locale.ROOT));
             Files.createDirectories(dir);
             Files.writeString(dir.resolve("detect.glsl"),
                     emitter.detect(e.model, e.markerX, e.markerY, e.markerValue));
-            Files.writeString(dir.resolve("model.glsl"), emitter.modelCase(e.model));
 
             String id = e.model.id.toLowerCase(Locale.ROOT);
             defines.append(emitter.define(e.model, e.cemNumber));
             detectRouter.append("#moj_import <floamy/cosmetics/").append(id).append("/detect.glsl>\n");
-            modelRouter.append("#moj_import <floamy/cosmetics/").append(id).append("/model.glsl>\n");
+            codec.add(e.model);
         }
 
         Files.writeString(registry.resolve("defines.glsl"), defines.toString());
         Files.writeString(registry.resolve("detect.glsl"), detectRouter.toString());
-        Files.writeString(registry.resolve("model.glsl"), modelRouter.toString());
+        // data-driven geometry array + cos_index router, consumed by floamy/cosmetics/decode.glsl
+        Files.writeString(cosmetics.resolve("data.glsl"), codec.glsl());
     }
 
     private int nextMarkerValue() {

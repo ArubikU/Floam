@@ -32,6 +32,15 @@ color = sBox(-center + matf_verifyPos(pos)* modelSize, dirTBN, matf_verifySize(s
 color = sBox(Rotation * (-center + (matf_verifyPos(pos)+ rotPivot) * modelSize) - rotPivot * modelSize, Rotation * dirTBN, matf_verifySize(size) * modelSize, TBN * inverse(Rotation), color, minT, uSide, dSide, nSide, wSide, sSide, eSide,false); \
 }
 
+// Bone rotation: orient the cube IN PLACE by Rown (around its own centre) AND orbit the whole bone
+// around bonePivot by Rorbit. modelCentre = bonePivot + Rorbit*(pos - bonePivot); orientation = Rorbit*Rown.
+// Separating the two rotations is what a single Rotation+rotPivot cannot do.
+#define ADD_BOX_BONE(pos, size, Rorbit, Rown, bonePivot, dSide, uSide, nSide, eSide, sSide, wSide) { \
+mat3 _Rf = Rorbit * Rown; \
+vec3 _mc = bonePivot + Rorbit * (matf_verifyPos(pos) - bonePivot); \
+color = sBox(_Rf * -center + _mc * modelSize, _Rf * dirTBN, matf_verifySize(size) * modelSize, TBN * inverse(_Rf), color, minT, uSide, dSide, nSide, wSide, sSide, eSide,false); \
+}
+
 #define ADD_SQUARE_ROTATE(pos, size, Rotation, rotPivot, uv) { \
 color = sSquareWithRotation(Rotation * (-center + (matf_verifyPos(pos)+ rotPivot) * modelSize) - rotPivot * modelSize, Rotation * dirTBN, matf_verifySize(size) * modelSize, vertexColor, color, minT, uv, rotAngle);\
 }

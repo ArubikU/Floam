@@ -1,0 +1,10 @@
+{
+  "layers" : {
+    "humanoid" : [ {
+      "texture" : "minecraft:zekern_wolf_pet"
+    } ],
+    "humanoid_leggings" : [ {
+      "texture" : "minecraft:zekern_wolf_pet"
+    } ]
+  }
+}

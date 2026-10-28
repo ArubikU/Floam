@@ -1,0 +1,10 @@
+{
+  "layers" : {
+    "humanoid" : [ {
+      "texture" : "minecraft:zekern_chainmail_sp"
+    } ],
+    "humanoid_leggings" : [ {
+      "texture" : "minecraft:zekern_chainmail_sp"
+    } ]
+  }
+}

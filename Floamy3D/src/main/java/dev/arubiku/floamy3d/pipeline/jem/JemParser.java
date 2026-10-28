@@ -244,13 +244,19 @@ public final class JemParser {
 
         // Box-scope .jp ops (seat / cube targeting / btranslate / mirror / flipu / flipv). size = the
         // scaled half-extent the shader uses, so `seat` (bz.z = -sz.y) matches posZ = -sizeY.
+        String[] jpAnimRot = null, jpAnimPos = null, jpAnimSize = null;   // per-axis animation formulas
+        double jpEmissive = -1, jpTransparency = -1;                       // .jp emissive/transparent ops
         if (jp != null) {
             JpEngine.BoxCtx bc = new JpEngine.BoxCtx(
                     new double[]{emitPos.x, emitPos.y, emitPos.z},
                     new double[]{half.x * curScale, half.y * curScale, half.z * curScale},
                     boxIndex, curT);
             bc.perFace = perFace;
+            bc.name = b.path("name").asText("");
+            bc.rot = new double[]{rotEuler.x, rotEuler.y, rotEuler.z};
             jp.applyBox(curKey, bc);
+            if (bc.hasAnim()) { jpAnimRot = bc.animRot; jpAnimPos = bc.animPos; jpAnimSize = bc.animSize; }
+            jpEmissive = bc.emissive; jpTransparency = bc.transparency;
             emitPos = new Vec3(bc.pos[0], bc.pos[1], bc.pos[2]);
             // switchface: remap face UVs (swap[i] = which source face's UV face i takes)
             boolean reorder = false;
@@ -267,8 +273,18 @@ public final class JemParser {
         }
 
 
-        return new CemBox(emitPos, half, rotEuler, new Vec3(0, 0, 0), frame.mirror, faces,
+        CemBox out = new CemBox(emitPos, half, rotEuler, new Vec3(0, 0, 0), frame.mirror, faces,
                 curBase, frame.ext, curScale, rotMatrix);
+        out.name = b.path("name").asText("");
+        out.animRot = jpAnimRot; out.animPos = jpAnimPos; out.animSize = jpAnimSize;
+        // emissive/transparency: .jp box op overrides; else the e_<name>/t_<name> bone convention (cube or part key).
+        double em = jpEmissive >= 0 ? jpEmissive : CemBox.parseEmissive(out.name);
+        if (em < 0) em = CemBox.parseEmissive(curKey);
+        out.emissive = em;
+        double tr = jpTransparency >= 0 ? jpTransparency : CemBox.parseTransparency(out.name);
+        if (tr < 0) tr = CemBox.parseTransparency(curKey);
+        out.transparency = tr;
+        return out;
     }
 
     private static boolean isIdentity(Mat3 m) {

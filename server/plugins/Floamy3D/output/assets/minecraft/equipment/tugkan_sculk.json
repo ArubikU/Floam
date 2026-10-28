@@ -1,0 +1,10 @@
+{
+  "layers" : {
+    "humanoid" : [ {
+      "texture" : "minecraft:tugkan_sculk"
+    } ],
+    "humanoid_leggings" : [ {
+      "texture" : "minecraft:tugkan_sculk"
+    } ]
+  }
+}

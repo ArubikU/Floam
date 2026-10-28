@@ -26,7 +26,9 @@ import java.util.zip.ZipOutputStream;
  */
 public final class PackAssembler {
     private static final ObjectMapper MAPPER = new ObjectMapper();
-    private static final int MAX_FORMAT = 2147483647;
+    // NOT Integer.MAX_VALUE: 3rd-party pack mergers (CraftEngine) reparse the format as a float and
+    // choke on "2.147483647E9". A large finite value covers forward-compat for years + parses clean.
+    private static final int MAX_FORMAT = 9999;
 
     private final Path engineRoot;
 
@@ -83,13 +85,12 @@ public final class PackAssembler {
     private void writeMcmeta(Path file, String description, List<PackVersion> versions) throws IOException {
         ObjectNode root = MAPPER.createObjectNode();
         ObjectNode pack = root.putObject("pack");
+        // pack_format: legacy single-format field, required for OLD versions (< 65) to accept the pack.
         pack.put("pack_format", PackVersion.baseFormat());
         pack.put("description", description);
-        // old-style range (<= format 64)
-        ObjectNode supported = pack.putObject("supported_formats");
-        supported.put("min_inclusive", PackVersion.baseFormat());
-        supported.put("max_inclusive", MAX_FORMAT);
-        // new-style mandatory fields (format >= 69 / 1.21.9+)
+        // min_format/max_format: the 1.21.9+ range fields. NOTE: the old `supported_formats` object
+        // (min_inclusive/max_inclusive long-form) is NOT recognized in >1.21.8 and makes the pack-meta
+        // codec FAIL ("missing mandatory fields min_format and max_format") — so we do NOT emit it.
         pack.put("min_format", PackVersion.baseFormat());
         pack.put("max_format", MAX_FORMAT);
 
@@ -100,10 +101,9 @@ public final class PackAssembler {
             for (int i = versions.size() - 1; i >= 0; i--) {
                 PackVersion v = versions.get(i);
                 ObjectNode e = entries.addObject();
-                ObjectNode fmt = e.putObject("formats");        // old-style
-                fmt.put("min_inclusive", v.minFormat);
-                fmt.put("max_inclusive", v.maxFormat);
-                e.put("min_format", v.minFormat);               // new-style (1.21.9+)
+                // 1.21.9+ overlay range fields. The old long-form `formats` {min_inclusive/max_inclusive}
+                // is NOT recognized in >1.21.8 and fails the pack-meta codec — so we emit ONLY min/max_format.
+                e.put("min_format", v.minFormat);
                 e.put("max_format", v.maxFormat);
                 e.put("directory", v.dir);
             }

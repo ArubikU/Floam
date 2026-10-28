@@ -1,0 +1,10 @@
+{
+  "layers" : {
+    "humanoid" : [ {
+      "texture" : "minecraft:arubik_cowboy_pack"
+    } ],
+    "humanoid_leggings" : [ {
+      "texture" : "minecraft:arubik_cowboy_pack"
+    } ]
+  }
+}

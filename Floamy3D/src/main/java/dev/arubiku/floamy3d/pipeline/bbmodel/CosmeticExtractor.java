@@ -43,6 +43,13 @@ public final class CosmeticExtractor {
         JsonNode elements = root.get("elements");
         if (elements != null) for (JsonNode e : elements) byUuid.put(e.path("uuid").asText(), e);
 
+        // Modern Blockbench stores group metadata (name/rotation/origin) in a SEPARATE top-level
+        // "groups" array keyed by uuid; the outliner only holds the uuid hierarchy. Index it so
+        // walkOutliner can resolve a group's rotation/pivot (older files inline it — handled too).
+        groupMeta.clear();
+        JsonNode groups = root.get("groups");
+        if (groups != null) for (JsonNode g : groups) groupMeta.put(g.path("uuid").asText(), g);
+
         // map each element uuid -> bone (via the outliner group it lives under)
         Map<String, PlayerModel.Bone> elementBone = new HashMap<>();
         JsonNode outliner = root.get("outliner");
@@ -60,16 +67,27 @@ public final class CosmeticExtractor {
             if (from == null || to == null) { ignored++; continue; }
             Vec3 center = from.mid(to);
 
-            PlayerModel.Bone bone = elementBone.get(en.getKey());
-            if (bone == null) bone = PlayerModel.boneAt(center); // fallback by region
-            if (bone == null) { ignored++; continue; }            // outside every bone -> ignore
-
-            if (bone.isBaseCube(from, to, 0.5)) {
-                // matches a vanilla base cube; only count it as a modification if it differs
-                if (!bone.isBaseCube(from, to, EPS)) modBoxes.computeIfAbsent(bone, k -> new ArrayList<>()).add(toBox(el, from, to, bone));
-                continue; // unchanged base -> skip
+            // Default player template cube? Ignore it (model authored ON the template; keep only ADDED geo).
+            PlayerModel.Bone baseBone = PlayerModel.boneAt(center);
+            String gName = groupName.getOrDefault(en.getKey(), "");
+            if (baseBone != null && baseBone.isBaseCube(from, to, 0.5)) {
+                if (!baseBone.isBaseCube(from, to, EPS)) {
+                    Vec3 gr0 = groupRot.get(en.getKey()), gp0 = groupPivot.get(en.getKey());
+                    CemBox mb = toBox(el, from, to, baseBone, gr0, gp0); mb.name = gName;
+                    mb.emissive = CemBox.parseEmissive(gName); mb.transparency = CemBox.parseTransparency(gName);
+                    modBoxes.computeIfAbsent(baseBone, k -> new ArrayList<>()).add(mb);
+                }
+                continue; // unchanged default cube -> skip
             }
-            cosmeticBoxes.computeIfAbsent(bone, k -> new ArrayList<>()).add(toBox(el, from, to, bone));
+
+            // Added cosmetic geometry. Named group -> its bone; unnamed group -> default BODY
+            // (capes/back items hang off body; a spatial guess sends a long cape to a leg).
+            PlayerModel.Bone bone = elementBone.get(en.getKey());
+            if (bone == null) bone = PlayerModel.BONES.get("body");
+            Vec3 gRot = groupRot.get(en.getKey()), gPivot = groupPivot.get(en.getKey());
+            CemBox cb = toBox(el, from, to, bone, gRot, gPivot); cb.name = gName;
+            cb.emissive = CemBox.parseEmissive(gName); cb.transparency = CemBox.parseTransparency(gName);
+            cosmeticBoxes.computeIfAbsent(bone, k -> new ArrayList<>()).add(cb);
         }
 
         Result r = new Result(ignored);
@@ -86,15 +104,31 @@ public final class CosmeticExtractor {
         return m;
     }
 
-    /** Element -> CemBox, localized to the bone (subtract the bone pivot). */
-    private CemBox toBox(JsonNode el, Vec3 from, Vec3 to, PlayerModel.Bone bone) {
+    /** Element -> CemBox, localized to the bone (subtract the bone pivot), with the group's rotation
+     *  baked in (Blockbench groups rotate children around their origin). */
+    private CemBox toBox(JsonNode el, Vec3 from, Vec3 to, PlayerModel.Bone bone, Vec3 gRot, Vec3 gPivot) {
         double inflate = el.path("inflate").asDouble(0.0);
-        Vec3 center = from.mid(to).sub(bone.pivot);
-        Vec3 half = from.halfExtent(to).add(new Vec3(inflate, inflate, inflate));
+        Vec3 worldCenter = from.mid(to);
         Vec3 rotation = vec(el.get("rotation"));
         if (rotation == null) rotation = new Vec3(0, 0, 0);
+        boolean hasGroup = gRot != null && !(gRot.x == 0 && gRot.y == 0 && gRot.z == 0);
+        Vec3 center = worldCenter.sub(bone.pivot);
+        Vec3 half = from.halfExtent(to).add(new Vec3(inflate, inflate, inflate));
         Vec3 origin = vec(el.get("origin"));
-        Vec3 pivot = origin == null ? new Vec3(0, 0, 0) : origin.sub(bone.pivot).sub(center);
+        // Do NOT bake the group rotation into the position. Keep the box at its REST position; the orbit
+        // pivot (group pivot, or the cube origin for non-grouped) is stored and turned into a rotPivot +
+        // conjugated rotation matrix in applyJpToCosmetic. This keeps positions exact AND lets `animate`
+        // swing the WHOLE bone around its pivot (a single euler bake can't do runtime bone rotation).
+        Vec3 pivot = new Vec3(0, 0, 0);
+        Vec3 groupPivot;
+        Vec3 groupRot = new Vec3(0, 0, 0);
+        if (hasGroup && gPivot != null) {
+            groupRot = gRot;                               // ORBITS the group pivot (kept out of `rotation`)
+            groupPivot = gPivot.sub(bone.pivot);           // orbit the group pivot
+        } else {
+            groupPivot = origin == null ? center : origin.sub(bone.pivot);   // cube origin, else centre
+        }
+        // `rotation` stays the cube's OWN euler only (in-place around its centre/origin).
 
         FaceUV[] f = new FaceUV[6];
         JsonNode faces = el.get("faces");
@@ -104,18 +138,47 @@ public final class CosmeticExtractor {
         f[CemBox.EAST]  = face(faces, "east");
         f[CemBox.SOUTH] = face(faces, "south");
         f[CemBox.WEST]  = face(faces, "west");
-        return new CemBox(center, half, rotation, pivot, false, f);
+        CemBox box = new CemBox(center, half, rotation, pivot, false, f);
+        box.name = el.path("name").asText("");
+        box.groupPivot = groupPivot;
+        box.groupRot = groupRot;   // group/bone euler (e.g. -12.5 X) -> folded into R + orbits groupPivot
+        return box;
     }
 
+    // accumulated group transform per element (Blockbench groups rotate their children around their origin).
+    private final Map<String, Vec3> groupRot = new HashMap<>();    // accumulated euler (deg)
+    private final Map<String, Vec3> groupPivot = new HashMap<>();  // the rotated group's origin (model space)
+    private final Map<String, String> groupName = new HashMap<>(); // deepest containing group/bone name (for `submatch`)
+    private final Map<String, JsonNode> groupMeta = new HashMap<>(); // uuid -> group node (name/rotation/origin)
+
     private void walkOutliner(JsonNode node, PlayerModel.Bone current, Map<String, PlayerModel.Bone> out) {
+        walkOutliner(node, current, new Vec3(0, 0, 0), null, "", out);
+    }
+    private void walkOutliner(JsonNode node, PlayerModel.Bone current, Vec3 curRot, Vec3 curPivot, String curGroup, Map<String, PlayerModel.Bone> out) {
         for (JsonNode child : node) {
             if (child.isTextual()) {
-                if (current != null) out.put(child.asText(), current);
+                String uuid = child.asText();
+                if (current != null) out.put(uuid, current);
+                // record the group transform for EVERY element, even in unnamed groups (those default to
+                // the body bone later) — otherwise the bone rotation/pivot is silently dropped.
+                groupRot.put(uuid, curRot);
+                if (curPivot != null) groupPivot.put(uuid, curPivot);
+                groupName.put(uuid, curGroup);
             } else if (child.isObject()) {
-                PlayerModel.Bone b = PlayerModel.bone(child.path("name").asText(""));
+                // group metadata lives in the top-level "groups" array (by uuid); fall back to inline.
+                JsonNode meta = groupMeta.getOrDefault(child.path("uuid").asText(), child);
+                String gname = meta.path("name").asText(child.path("name").asText(""));
+                PlayerModel.Bone b = PlayerModel.bone(gname);
                 PlayerModel.Bone use = b != null ? b : current; // inherit parent bone if subgroup
+                // build the "/"-joined ancestor path so `submatch` can target a group's whole subtree.
+                String name = gname.isEmpty() ? curGroup : (curGroup.isEmpty() ? gname : curGroup + "/" + gname);
+                Vec3 gr = vec(meta.get("rotation"));
+                Vec3 go = vec(meta.get("origin"));
+                Vec3 nextRot = (gr != null) ? curRot.add(gr) : curRot;
+                // the pivot to rotate around = this group's origin (the deepest rotated group wins)
+                Vec3 nextPivot = (go != null && gr != null && !(gr.x == 0 && gr.y == 0 && gr.z == 0)) ? go : curPivot;
                 JsonNode children = child.get("children");
-                if (children != null) walkOutliner(children, use, out);
+                if (children != null) walkOutliner(children, use, nextRot, nextPivot, name, out);
             }
         }
     }

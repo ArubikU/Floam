@@ -1,0 +1,10 @@
+{
+  "layers" : {
+    "humanoid" : [ {
+      "texture" : "minecraft:tourne_fin_armor_red"
+    } ],
+    "humanoid_leggings" : [ {
+      "texture" : "minecraft:tourne_fin_armor_red"
+    } ]
+  }
+}

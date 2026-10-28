@@ -49,6 +49,7 @@ vec4 relativeUv(float x, float y, float xlength, float ylength, ivec2 cord) {
 }
 
 #moj_import <mods/armor/datadriven.glsl>
+#moj_import <floamy/cosmetic_decode.glsl>
 
 void main() {
     if(markforremove == 1) discard;
@@ -83,9 +84,13 @@ void main() {
                 if (cemi == -1){
                     continue;
                 }
-                switch (cemi) {
-                    #moj_import <floamy/registry/model.glsl>
-                    #moj_import <mods/armor/armor.glsl>
+                // cosmetics (cem id 50..999) -> data-driven decode; armor (>=1000) -> its own decode.
+                if (cemi >= 50 && cemi < 1000) {
+                    cosmeticRender(cemi, center, dirTBN, modelSize, TBN, RelativeCords, color, minT);
+                } else {
+                    switch (cemi) {
+                        #moj_import <mods/armor/armor.glsl>
+                    }
                 }
                 
             }
@@ -98,7 +103,13 @@ void main() {
         sphericalDistance = minT;
         cylindricalDistance = minT;
         float opacity = ceil(color.a * 255);
-        if (dynamicEmissive == 0 && opacity != 128) color *= cem_light;
+        // emissive cosmetic box (e_<bone>): mix toward full-bright/unlit by its intensity; else apply light.
+        if (cosEmissive >= 0.0) {
+            color = mix(color * cem_light, color, cosEmissive);
+        } else if (dynamicEmissive == 0 && opacity != 128) {
+            color *= cem_light;
+        }
+        if (cosAlpha >= 0.0) color.a *= cosAlpha;   // t_<bone> transparency
     }
     
     float opacity = ceil(color.a * 255);

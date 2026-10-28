@@ -1,0 +1,204 @@
+{
+ "meta": {
+  "format_version": "4.5",
+  "model_format": "free",
+  "box_uv": false
+ },
+ "name": "wings",
+ "resolution": {
+  "width": 64,
+  "height": 64
+ },
+ "elements": [
+  {
+   "name": "wingL",
+   "from": [
+    -8,
+    19.75,
+    -5.01
+   ],
+   "to": [
+    0,
+    35.75,
+    -4.99
+   ],
+   "origin": [
+    -4,
+    27.75,
+    -5
+   ],
+   "faces": {
+    "down": {
+     "uv": [
+      63,
+      29,
+      63,
+      39
+     ],
+     "texture": 0
+    },
+    "up": {
+     "uv": [
+      56,
+      29,
+      56,
+      39
+     ],
+     "texture": 0
+    },
+    "north": {
+     "uv": [
+      56,
+      16,
+      64,
+      32
+     ],
+     "texture": 0
+    },
+    "east": {
+     "uv": [
+      56,
+      16,
+      64,
+      32
+     ],
+     "texture": 0
+    },
+    "south": {
+     "uv": [
+      56,
+      16,
+      64,
+      32
+     ],
+     "texture": 0
+    },
+    "west": {
+     "uv": [
+      56,
+      16,
+      64,
+      32
+     ],
+     "texture": 0
+    }
+   },
+   "uuid": "5e4e2e99-94c1-4363-9899-34a7ae0264dc"
+  },
+  {
+   "name": "wingR",
+   "from": [
+    0,
+    19.75,
+    -5.01
+   ],
+   "to": [
+    8,
+    35.75,
+    -4.99
+   ],
+   "origin": [
+    4,
+    27.75,
+    -5
+   ],
+   "faces": {
+    "down": {
+     "uv": [
+      63,
+      29,
+      63,
+      39
+     ],
+     "texture": 0
+    },
+    "up": {
+     "uv": [
+      56,
+      29,
+      56,
+      39
+     ],
+     "texture": 0
+    },
+    "north": {
+     "uv": [
+      56,
+      16,
+      64,
+      32
+     ],
+     "texture": 0
+    },
+    "east": {
+     "uv": [
+      56,
+      16,
+      64,
+      32
+     ],
+     "texture": 0
+    },
+    "south": {
+     "uv": [
+      56,
+      16,
+      64,
+      32
+     ],
+     "texture": 0
+    },
+    "west": {
+     "uv": [
+      56,
+      16,
+      64,
+      32
+     ],
+     "texture": 0
+    }
+   },
+   "uuid": "d93845a3-3953-4e89-a23f-753ae1897762"
+  }
+ ],
+ "groups": [
+  {
+   "name": "body",
+   "uuid": "36e92dfd-0779-41c4-90d2-579093dafa58",
+   "origin": [
+    0,
+    24,
+    0
+   ],
+   "children": [
+    "5e4e2e99-94c1-4363-9899-34a7ae0264dc",
+    "d93845a3-3953-4e89-a23f-753ae1897762"
+   ]
+  }
+ ],
+ "outliner": [
+  {
+   "uuid": "36e92dfd-0779-41c4-90d2-579093dafa58",
+   "name": "body",
+   "origin": [
+    0,
+    24,
+    0
+   ],
+   "children": [
+    "5e4e2e99-94c1-4363-9899-34a7ae0264dc",
+    "d93845a3-3953-4e89-a23f-753ae1897762"
+   ]
+  }
+ ],
+ "textures": [
+  {
+   "id": "0",
+   "name": "tex",
+   "width": 64,
+   "height": 64,
+   "uv_width": 64,
+   "uv_height": 64
+  }
+ ]
+}

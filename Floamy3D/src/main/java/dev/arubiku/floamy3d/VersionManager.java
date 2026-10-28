@@ -45,18 +45,31 @@ public class VersionManager {
         
         try {
             // Aplicar las modificaciones específicas de versiones avanzadas
+            String assetId = config.getString("id").replace(":", "_");
             stack.editMeta(meta -> {
                 try {
-                    EquippableComponent equippable = meta.getEquippable();
-                    if(config.contains("custom_model_data_" + equippable.getSlot().toString().toLowerCase())) {
-                        meta.setCustomModelData(config.getInt("custom_model_data_" + equippable.getSlot().toString().toLowerCase(), 0));
-                    }
-                    if(config.contains("model_key" + equippable.getSlot().toString().toLowerCase())) {
-                        meta.setItemModel(NamespacedKey.fromString(config.getString("model_key" + equippable.getSlot().toString().toLowerCase())));
-                    }
-                    equippable.setModel(new NamespacedKey("minecraft", config.getString("id").replace(":", "_")));
+                    EquippableComponent equippable = meta.getEquippable();   // never null in Paper (fresh default)
+                    // Determine the slot from the item material FIRST (getEquippable() defaults to HEAD).
+                    String mat = stack.getType().name();
+                    org.bukkit.inventory.EquipmentSlot slot =
+                          (mat.contains("HELMET") || mat.contains("HEAD") || mat.contains("SKULL")) ? org.bukkit.inventory.EquipmentSlot.HEAD
+                        : (mat.contains("CHESTPLATE") || mat.contains("ELYTRA")) ? org.bukkit.inventory.EquipmentSlot.CHEST
+                        : (mat.contains("LEGGINGS")) ? org.bukkit.inventory.EquipmentSlot.LEGS
+                        : (mat.contains("BOOTS")) ? org.bukkit.inventory.EquipmentSlot.FEET
+                        : equippable.getSlot();
+                    String slotKey = slot.toString().toLowerCase();
+                    if (config.contains("custom_model_data_" + slotKey))
+                        meta.setCustomModelData(config.getInt("custom_model_data_" + slotKey, 0));
+                    if (config.contains("model_key" + slotKey))
+                        meta.setItemModel(NamespacedKey.fromString(config.getString("model_key" + slotKey)));
+                    equippable.setSlot(slot);
+                    // asset_id (the equipment/<id>.json binding). SNAPSHOT — must write back with setEquippable.
+                    equippable.setModel(new NamespacedKey("minecraft", assetId));
+                    meta.setEquippable(equippable);
+                    org.bukkit.Bukkit.getLogger().info("[Floamy3D] bound equipment asset_id=minecraft:" + assetId
+                        + " slot=" + slot + " on " + mat);
                 } catch (Exception e) {
-                    // Silenciar cualquier error dentro del editMeta para evitar que la operación falle
+                    org.bukkit.Bukkit.getLogger().warning("[Floamy3D] failed to bind equipment for " + assetId + ": " + e);
                 }
             });
         } catch (Exception e) {

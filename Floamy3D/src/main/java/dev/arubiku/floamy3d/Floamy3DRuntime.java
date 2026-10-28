@@ -134,6 +134,7 @@ public final class Floamy3DRuntime {
         Path compiledDir = data.resolve("compiled");
         java.nio.file.Files.createDirectories(compiledDir);
         List<dev.arubiku.floamy3d.pipeline.texture.ArmorDataCodec.Part> dataParts = new java.util.ArrayList<>();
+        java.util.Map<String, List<dev.arubiku.floamy3d.pipeline.texture.ArmorDataCodec.Part>> partsByArmor = new java.util.LinkedHashMap<>();
         List<dev.arubiku.floamy3d.pipeline.texture.ColorAtlasBaker.Entry> atlas = new java.util.ArrayList<>();
         // Hot-reloadable transform scripts. Armor and cosmetics use SEPARATE algorithms/folders;
         // parsers/ root holds shared `var` globals applied to both. Reloaded every build.
@@ -166,6 +167,7 @@ public final class Floamy3DRuntime {
                 vshDetect.append(b.vsh).append('\n');
                 parts.append(b.defs);
                 dataParts.addAll(b.dataParts);
+                partsByArmor.put(id, b.dataParts);
                 java.nio.file.Files.writeString(compiledDir.resolve(id + ".glsl"), b.reference);
                 compiledRef.append(b.reference).append('\n');
                 armorCount++;
@@ -213,7 +215,13 @@ public final class Floamy3DRuntime {
             var res = baker.bakeColorAtlas(atlas);
             java.nio.file.Files.writeString(inc.resolve("armorcords.glsl"), res.armorcordsGlsl);
             // Expand both atlas layers with the encoded box-data region, then write them.
-            baker.writeColorAtlasWithData(res, engineDir.resolve("common-pack/assets"), dataParts);
+            var assetsRoot = engineDir.resolve("common-pack/assets");
+            baker.writeColorAtlasWithData(res, assetsRoot, dataParts);
+            // Modern equipment-id delivery: per-armor humanoid textures + an equipment json, so an item
+            // with equippable.model = minecraft:<id> (`/f3d getArmor <id> vanilla`) actually binds.
+            baker.writeEquipmentCem(atlas, partsByArmor, assetsRoot);   // self-contained 1-tile atlas+data -> 3D CEM
+            var eqWriter = new dev.arubiku.floamy3d.pipeline.texture.EquipmentWriter();
+            for (var e : atlas) eqWriter.write(assetsRoot, "minecraft", e.id, e.layer2 != null);
         }
 
         // ---- cosmetics + modifications ----
@@ -232,6 +240,9 @@ public final class Floamy3DRuntime {
     private int scanCosmetics(Path dir, CosmeticType type) {
         int n = 0;
         for (File model : listModels(dir)) {
+            // skip models inside a configured-cosmetic folder (they have a config.yml and are handled by
+            // scanConfiguredCosmetics) — otherwise they'd be registered TWICE (once with the filename id).
+            if (new File(model.getParentFile(), "config.yml").exists()) continue;
             try {
                 String id = stripExt(model.getName());
                 List<CemModel> models = new java.util.ArrayList<>();
@@ -283,12 +294,16 @@ public final class Floamy3DRuntime {
                 // ONE model -> CEM parts (one GLSL case). The extractor keeps only geometry ADDED on top
                 // of the default player template (default bones are discarded), so capes stay tiny.
                 var ex = new dev.arubiku.floamy3d.pipeline.bbmodel.CosmeticExtractor().extract(modelF, CemModel.sanitize(id).toUpperCase(java.util.Locale.ROOT));
-                java.util.List<CemModel> models = new java.util.ArrayList<>();
-                models.addAll(ex.cosmetics); models.addAll(ex.modifications);
+                // per-cosmetic .jp (folder-local) layered over shared parsers/cosmetic — transforms the geometry.
+                var jp = dev.arubiku.floamy3d.pipeline.jem.JpEngine.load(plugin.getDataFolder().toPath().resolve("parsers"), "cosmetic").loadMore(folder.toPath());
+                // ONLY added geometry — modifications (tweaked default player cubes) are discarded so the
+                // cosmetic never replaces/deletes the player's own body faces.
+                java.util.List<CemModel> models = new java.util.ArrayList<>(ex.cosmetics);
                 java.util.List<String> partIds = new java.util.ArrayList<>();
                 for (CemModel m : models) {
                     if (m.boxes.isEmpty()) continue;
                     m.kind = CemModel.Kind.COSMETIC;
+                    applyJpToCosmetic(jp, m);
                     Registry.Entry e = registry.register(m);
                     var fp = new dev.arubiku.floamy3d.pipeline.registry.OverlapDetector().footprint(m);
                     String pid = m.id.toLowerCase(java.util.Locale.ROOT);
@@ -316,6 +331,134 @@ public final class Floamy3DRuntime {
             }
         }
         return n;
+    }
+
+    /** Apply a JpEngine to an extracted cosmetic model so parsers/cosmetic/*.jp AND the per-cosmetic
+     *  model.jp behave 1:1 with armor (same DSL, same axes, same effect). The cosmetic CemBox is in the
+     *  final render space (X<->Z already where the leather armor's PIX bridge would put it), so we
+     *  REVERSE that bridge to JEM space, run the EXACT same sequence as {@link JemParser} toBox
+     *  (translate -> scalesc -> rotatesc -> translatesc around scenepivot), re-bridge, then orientation
+     *  (rotate) + box-scope ops (flips, switchface, mirror, btranslate). */
+    private void applyJpToCosmetic(dev.arubiku.floamy3d.pipeline.jem.JpEngine jp, CemModel m) {
+        if (jp == null) return;
+        // key = "<configId>:<part>". The model id is "<configId>_<part>" (extractor appends the bone), so
+        // strip the redundant "_<part>" suffix -> a `match <configId>:*` in the .jp matches as expected.
+        String part = m.sourcePart == null ? "" : m.sourcePart.toLowerCase(java.util.Locale.ROOT);
+        String baseId = m.id.toLowerCase(java.util.Locale.ROOT);
+        if (!part.isEmpty() && baseId.endsWith("_" + part)) baseId = baseId.substring(0, baseId.length() - part.length() - 1);
+        String key = baseId + ":" + part;
+        var pc = new dev.arubiku.floamy3d.pipeline.jem.JpEngine.PartCtx();
+        pc.scale = 1.0; pc.base = null;
+        jp.applyPart(key, pc);
+        var V = (java.util.function.Function<double[], dev.arubiku.floamy3d.pipeline.model.Vec3>)
+                a -> new dev.arubiku.floamy3d.pipeline.model.Vec3(a[0], a[1], a[2]);
+        dev.arubiku.floamy3d.pipeline.model.Mat3 sceneR = dev.arubiku.floamy3d.pipeline.model.Mat3.euler(V.apply(pc.sceneRot));
+        var piv = V.apply(pc.scenePivot);
+        var t = V.apply(pc.t);
+        var sceneT = V.apply(pc.sceneT);
+        boolean anyScene = pc.sceneScale != 1.0 || pc.sceneRot[0]!=0 || pc.sceneRot[1]!=0 || pc.sceneRot[2]!=0 || pc.sceneT[0]!=0 || pc.sceneT[1]!=0 || pc.sceneT[2]!=0;
+        boolean anyRot = pc.rot[0]!=0 || pc.rot[1]!=0 || pc.rot[2]!=0;
+        boolean anyT = pc.t[0]!=0 || pc.t[1]!=0 || pc.t[2]!=0;
+        // Y<->Z render-frame swap matrix (its own transpose). Conjugating a rotation by it (P*R*P) is the
+        // valid way to move a rotation between bbmodel and render space — naive euler-axis swap is NOT.
+        var P = new dev.arubiku.floamy3d.pipeline.model.Mat3(new double[]{1,0,0, 0,0,1, 0,1,0});
+        var childRot = V.apply(pc.childRot);
+        var childSceneR = dev.arubiku.floamy3d.pipeline.model.Mat3.euler(V.apply(pc.childSceneRot));
+        boolean anyChildScene = pc.childSceneRot[0]!=0 || pc.childSceneRot[1]!=0 || pc.childSceneRot[2]!=0;
+        boolean anyInvert = pc.invert[0] || pc.invert[1] || pc.invert[2];
+        // base PIX (armor JEM->CEM transform): a cosmetic can opt in. PIX = mat3(1,0,0, 0,0,-1, 0,1,0).
+        var PIX = new dev.arubiku.floamy3d.pipeline.model.Mat3(new double[]{1,0,0, 0,0,1, 0,-1,0});
+        boolean usePix = "PIX".equalsIgnoreCase(pc.base);
+        for (int i = 0; i < m.boxes.size(); i++) {
+            var b = m.boxes.get(i);
+            // "child" = a cube inside a rotated sub-group (its own bone). childrot/childscenerot apply ONLY
+            // to these (matches armor: extra spin/position-rotation on articulated sub-bones).
+            boolean isChild = b.groupRot.x != 0 || b.groupRot.y != 0 || b.groupRot.z != 0;
+            // Scene transform (bbmodel space): translate -> scale -> rotatesc(@scenepivot) -> translatesc.
+            // Applied to BOTH the rest centre AND the bone orbit pivot so they move together.
+            var c = b.center;
+            var gp = b.groupPivot != null ? b.groupPivot : b.center;
+            // invert <axis>: bake an axis flip into the position (base==null cosmetics, like JEM invertAxis).
+            if (anyInvert) {
+                c = new dev.arubiku.floamy3d.pipeline.model.Vec3(pc.invert[0]?-c.x:c.x, pc.invert[1]?-c.y:c.y, pc.invert[2]?-c.z:c.z);
+                gp = new dev.arubiku.floamy3d.pipeline.model.Vec3(pc.invert[0]?-gp.x:gp.x, pc.invert[1]?-gp.y:gp.y, pc.invert[2]?-gp.z:gp.z);
+            }
+            if (anyT) { c = c.add(t); gp = gp.add(t); }
+            if (anyScene) {
+                c = sceneXform(c, piv, pc.sceneScale, sceneR, sceneT);
+                gp = sceneXform(gp, piv, pc.sceneScale, sceneR, sceneT);
+            }
+            // childscenerot: extra POSITION rotation, sub-bones only (on top, around the scene pivot).
+            if (isChild && anyChildScene) {
+                c = childSceneR.mul(c.sub(piv)).add(piv);
+                gp = childSceneR.mul(gp.sub(piv)).add(piv);
+            }
+            // (PIX is always applied in the decode now — the cosmetic uses the armor's base convention.)
+            var ownEuler = b.rotation;
+            if (anyRot) ownEuler = ownEuler.add(V.apply(pc.rot));
+            // childrot: extra ORIENTATION, sub-bones only.
+            if (isChild) ownEuler = ownEuler.add(childRot);
+            // box-scope ops (flips / switchface / mirror / btranslate / seat / bset) — move only the cube (c)
+            var faces = b.faces;
+            var bc = new dev.arubiku.floamy3d.pipeline.jem.JpEngine.BoxCtx(
+                    new double[]{c.x, c.y, c.z}, new double[]{b.half.x, b.half.y, b.half.z}, i, pc.t);
+            bc.perFace = true; bc.name = b.name;
+            bc.pivot = new double[]{b.pivot.x, b.pivot.y, b.pivot.z};
+            bc.rot = new double[]{ownEuler.x, ownEuler.y, ownEuler.z};
+            jp.applyBox(key, bc);
+            boolean reorder = false;
+            for (int f = 0; f < 6; f++) if (bc.swap[f] != f) { reorder = true; break; }
+            if (reorder && faces != null) {
+                var src = faces.clone();
+                for (int f = 0; f < 6 && f < faces.length; f++) faces[f] = src[bc.swap[f]];
+            }
+            if ((bc.flipU || bc.flipV) && faces != null) faces = flipCosmeticFaces(faces, bc.flipU, bc.flipV);
+            if (faces != null) for (int f = 0; f < 6 && f < faces.length; f++)
+                if ((bc.faceU[f] || bc.faceV[f]) && faces[f] != null && faces[f].enabled) faces[f] = flipCosmeticFaces(new dev.arubiku.floamy3d.pipeline.model.FaceUV[]{faces[f]}, bc.faceU[f], bc.faceV[f])[0];
+
+            c = new dev.arubiku.floamy3d.pipeline.model.Vec3(bc.pos[0], bc.pos[1], bc.pos[2]);
+            // SEPARATE own (in-place) vs group (orbit gp): the decode does the nested pre-PIX transform
+            // mc = gp + Rgroup*(pos-gp), Rfull = PIX*Rgroup*Rown. So the group rotates ALL its cubes rigidly
+            // around gp while each cube's own rotation stays in place — no splay. (PIX bridges in the decode.)
+            var Rown = dev.arubiku.floamy3d.pipeline.model.Mat3.euler(ownEuler);
+            var Rgrp = dev.arubiku.floamy3d.pipeline.model.Mat3.euler(b.groupRot);
+            // armor parity: `sizeadd` inflates the half-extent, `scale` multiplies it (size only).
+            var half = new dev.arubiku.floamy3d.pipeline.model.Vec3(
+                    (b.half.x + pc.sizeadd) * pc.scale, (b.half.y + pc.sizeadd) * pc.scale, (b.half.z + pc.sizeadd) * pc.scale);
+            var nb = new dev.arubiku.floamy3d.pipeline.model.CemBox(c, half, new dev.arubiku.floamy3d.pipeline.model.Vec3(0,0,0), new dev.arubiku.floamy3d.pipeline.model.Vec3(0,0,0), b.mirror, faces, null, b.ext, b.scale, null);
+            nb.name = b.name;
+            nb.ownMatrix = Rown; nb.orbitMatrix = Rgrp; nb.bonePivotRender = gp;
+            nb.emissive = bc.emissive >= 0 ? bc.emissive : b.emissive;
+            nb.transparency = bc.transparency >= 0 ? bc.transparency : b.transparency;
+            // animation formulas — bbmodel axes (no swap; PIX bridges in the decode).
+            if (bc.hasAnim()) { nb.animRot = bc.animRot; nb.animPos = bc.animPos; nb.animSize = bc.animSize; }
+            m.boxes.set(i, nb);
+        }
+    }
+
+    private static dev.arubiku.floamy3d.pipeline.model.Vec3 sceneXform(dev.arubiku.floamy3d.pipeline.model.Vec3 v,
+            dev.arubiku.floamy3d.pipeline.model.Vec3 piv, double scale, dev.arubiku.floamy3d.pipeline.model.Mat3 R,
+            dev.arubiku.floamy3d.pipeline.model.Vec3 sceneT) {
+        var x = v.sub(piv);
+        if (scale != 1.0) x = new dev.arubiku.floamy3d.pipeline.model.Vec3(x.x*scale, x.y*scale, x.z*scale);
+        x = R.mul(x);
+        return x.add(piv).add(sceneT);
+    }
+    /** swap Y<->Z entries of a length-3 GLSL-expr array (render-space axis remap). */
+    private static String[] swapYZ(String[] a) { return a == null ? null : new String[]{a[0], a[2], a[1]}; }
+
+    /** UV flip identical to JemParser.flipFaces (keep the same region, negate the extent). */
+    private dev.arubiku.floamy3d.pipeline.model.FaceUV[] flipCosmeticFaces(dev.arubiku.floamy3d.pipeline.model.FaceUV[] f, boolean u, boolean v) {
+        var out = new dev.arubiku.floamy3d.pipeline.model.FaceUV[f.length];
+        for (int i = 0; i < f.length; i++) {
+            var s = f[i];
+            if (s == null || !s.enabled) { out[i] = s; continue; }
+            double x = s.x, y = s.y, w = s.w, h = s.h;
+            if (u) { x = x + w; w = -w; }
+            if (v) { y = y + h; h = -h; }
+            out[i] = new dev.arubiku.floamy3d.pipeline.model.FaceUV(x, y, w, h, 0, true);
+        }
+        return out;
     }
 
     /** Assemble the public pack from the engine source + generated content. */

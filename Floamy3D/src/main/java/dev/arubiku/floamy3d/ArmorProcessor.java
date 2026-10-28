@@ -56,9 +56,11 @@ public class ArmorProcessor {
     }
     copyTextures(outputFolder);
 
-    if (config.getString("vanilla_overrides", "false").equals("false")) {
-      writeEquipment(outputFolder);
-    }
+    // Equipment json (the asset_id binding) must be written for BOTH custom-leather AND
+    // vanilla-material armors. Previously it was gated to leather only, so a vanilla-override
+    // armor copied its texture but never got an equipment id -> it never matched the correct
+    // armor (only leather did). Write it unconditionally.
+    writeEquipment(outputFolder);
     if (config.getStringList("versions").contains("optifine") ||config.getStringList("versions").contains("modded")) {
 
       optifineProcessor.process(outputFolder);

@@ -1,0 +1,5 @@
+id: wings
+model: model.bbmodel
+jp: model.jp
+variants:
+  default: textures/tex.png

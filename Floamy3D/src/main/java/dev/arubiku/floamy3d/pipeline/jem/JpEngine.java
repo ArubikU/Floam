@@ -64,11 +64,23 @@ public final class JpEngine {
         public double[] pos, size;
         public int idx;
         public double[] t;        // owning part's resolved translate (read-only reference)
+        public String name = "";  // cube/group name (for `submatch <glob>`)
+        public double[] pivot = {0, 0, 0}, rot = {0, 0, 0}; // current pivot/rotation (animate `current`/`cp*`)
         public boolean flipU = false, flipV = false; // all-face horizontal/vertical UV flip
         public boolean[] faceU = new boolean[6], faceV = new boolean[6]; // per-face flip (down,up,north,east,south,west)
         public int[] swap = {0, 1, 2, 3, 4, 5}; // face UV remap: swap[i] = which source face's UV face i takes
         public boolean perFace = false; // true if this box uses per-face UVs (uvNorth/...) not box-UV (textureOffset)
+        // Per-axis GLSL animation formulas (arbitrary GameTime exprs), evaluated per-frame in the
+        // generated cos_anim_* functions. null entry = no animation on that axis/target.
+        // rot = radians onto the bone orbit; pos = additive position delta; size = additive half-extent delta.
+        public String[] animRot = new String[3], animPos = new String[3], animSize = new String[3];
+        // emissive intensity / transparency alpha (0..1), -1 = unset (keep the bone-name e_/t_ value).
+        public double emissive = -1.0, transparency = -1.0;
         public BoxCtx(double[] pos, double[] size, int idx, double[] t) { this.pos = pos; this.size = size; this.idx = idx; this.t = t; }
+        public boolean hasAnim() {
+            for (int i = 0; i < 3; i++) if (animRot[i] != null || animPos[i] != null || animSize[i] != null) return true;
+            return false;
+        }
     }
 
     private final List<Script> scripts = new ArrayList<>();
@@ -108,13 +120,13 @@ public final class JpEngine {
         return ctx;
     }
 
-    /** Box-scope pass: run per cube, respecting each box op's cube selector. */
+    /** Box-scope pass: run per cube, respecting each box op's cube + submatch selector. */
     public void applyBox(String key, BoxCtx box) {
         String k = key == null ? "" : key.toLowerCase(Locale.ROOT);
         for (Script s : scripts)
             if (s.matches(k))
                 for (Action a : s.actions)
-                    if (a.boxOp != null && a.selects(box.idx)) a.boxOp.apply(box);
+                    if (a.boxOp != null && a.selects(box.idx, box.name)) a.boxOp.apply(box);
     }
 
     /** Load extra .jp from another dir into this engine (e.g. an armor's own folder). */
@@ -127,12 +139,25 @@ public final class JpEngine {
     private interface PartOp { void apply(PartCtx c); }
     private interface BoxOp { void apply(BoxCtx b); }
 
-    /** One directive: a part op OR a box op (the latter carrying the active cube selector). */
+    /** One directive: a part op OR a box op (the latter carrying the active cube + submatch selectors). */
     private static final class Action {
         PartOp partOp; BoxOp boxOp; int cube = -2;  // -2 = all (no selector yet), -1 = *, >=0 = index
-        boolean selects(int idx) { return cube == -1 || cube == -2 || cube == idx; }
+        String nameGlob = null;                     // `submatch <glob>` over the cube/group name (null = any)
+        boolean selects(int idx, String name) {
+            boolean ci = cube == -1 || cube == -2 || cube == idx;
+            boolean ni = nameGlob == null || matchPath(nameGlob, name);
+            return ci && ni;
+        }
+        // name is a "/"-joined ancestor path (e.g. "body/rotate"); match if the glob hits ANY segment,
+        // so `submatch rotate` selects everything UNDER the rotate group (descendants), not just one level.
+        private static boolean matchPath(String glob, String name) {
+            if (name == null) return false;
+            for (String seg : name.toLowerCase(Locale.ROOT).split("/"))
+                if (!seg.isEmpty() && globMatch(glob, seg)) return true;
+            return false;
+        }
         static Action part(PartOp p) { Action a = new Action(); a.partOp = p; return a; }
-        static Action box(BoxOp b, int cube) { Action a = new Action(); a.boxOp = b; a.cube = cube; return a; }
+        static Action box(BoxOp b, int cube, String nameGlob) { Action a = new Action(); a.boxOp = b; a.cube = cube; a.nameGlob = nameGlob; return a; }
     }
 
     private static final class Script {
@@ -145,22 +170,24 @@ public final class JpEngine {
         }
 
         static void parseFile(List<String> lines, String src, JpEngine eng) {
-            Script sc = null; int curCube = -1;   // current box selector within the rule
+            Script sc = null; int curCube = -1; String curName = null;   // current box selectors within the rule
             for (String raw : lines) {
                 String line = raw.trim();
+                if (line.endsWith(":")) line = line.substring(0, line.length() - 1).trim();   // tolerate `cube *:` block syntax
                 int hash = line.indexOf('#'); if (hash >= 0) line = line.substring(0, hash).trim();
                 if (line.isEmpty()) continue;
                 String[] k = line.split("\\s+");
                 String op = k[0].toLowerCase(Locale.ROOT);
                 if (op.equals("var")) { eng.vars.put(k[1], Expr.parse(line.substring(line.indexOf(k[2])), eng.vars).eval(zero())); continue; }
-                if (op.equals("match")) { sc = new Script(); for (int i = 1; i < k.length; i++) sc.globs.add(k[i].toLowerCase(Locale.ROOT)); eng.scripts.add(sc); curCube = -1; continue; }
+                if (op.equals("match")) { sc = new Script(); for (int i = 1; i < k.length; i++) sc.globs.add(k[i].toLowerCase(Locale.ROOT)); eng.scripts.add(sc); curCube = -1; curName = null; continue; }
                 if (sc == null) { sc = new Script(); eng.scripts.add(sc); }
                 if (op.equals("cube")) { curCube = k[1].equals("*") ? -1 : Integer.parseInt(k[1]); continue; }
-                addAction(sc, op, k, line, eng.vars, curCube, src);
+                if (op.equals("submatch")) { curName = k[1].equalsIgnoreCase("*") ? null : k[1].toLowerCase(Locale.ROOT); continue; }
+                addAction(sc, op, k, line, eng.vars, curCube, curName, src);
             }
         }
 
-        static void addAction(Script sc, String op, String[] k, String line, Map<String, Double> vars, int cube, String src) {
+        static void addAction(Script sc, String op, String[] k, String line, Map<String, Double> vars, int cube, String nameGlob, String src) {
             switch (op) {
                 // --- part scope ---
                 case "translate" -> { Expr x = Expr.parse(k[1], vars), y = Expr.parse(k[2], vars), z = Expr.parse(k[3], vars);
@@ -196,30 +223,60 @@ public final class JpEngine {
                 case "bone" -> { String v = k[1].toUpperCase(Locale.ROOT); sc.actions.add(Action.part(c -> c.bone = v)); }
                 case "center" -> { Expr e = Expr.parse(k[1], vars); sc.actions.add(Action.part(c -> { c.centerMain = true; c.centerZ = e.eval(part(c)); })); }
                 // --- box scope ---
-                case "seat" -> sc.actions.add(Action.box(b -> b.pos[2] = -b.size[1], cube));
-                case "flipu" -> sc.actions.add(Action.box(b -> b.flipU = !b.flipU, cube));   // all-face horizontal UV flip
-                case "flipv" -> sc.actions.add(Action.box(b -> b.flipV = !b.flipV, cube));   // all-face vertical UV flip
-                case "flipupf" -> sc.actions.add(Action.box(b -> { if (b.perFace) b.flipU = !b.flipU; }, cube));   // U flip ONLY on per-face boxes
-                case "flipvpf" -> sc.actions.add(Action.box(b -> { if (b.perFace) b.flipV = !b.flipV; }, cube));   // V flip ONLY on per-face boxes
+                case "seat" -> sc.actions.add(Action.box(b -> b.pos[2] = -b.size[1], cube, nameGlob));
+                case "flipu" -> sc.actions.add(Action.box(b -> b.flipU = !b.flipU, cube, nameGlob));   // all-face horizontal UV flip
+                case "flipv" -> sc.actions.add(Action.box(b -> b.flipV = !b.flipV, cube, nameGlob));   // all-face vertical UV flip
+                case "flipupf" -> sc.actions.add(Action.box(b -> { if (b.perFace) b.flipU = !b.flipU; }, cube, nameGlob));   // U flip ONLY on per-face boxes
+                case "flipvpf" -> sc.actions.add(Action.box(b -> { if (b.perFace) b.flipV = !b.flipV; }, cube, nameGlob));   // V flip ONLY on per-face boxes
                 case "flipface" -> {   // flip ONE face's UV: flipface <down|up|north|east|south|west> [u|v]
                     int fi = face(k[1]); boolean vv = k.length > 2 && k[2].equalsIgnoreCase("v");
-                    sc.actions.add(Action.box(b -> { if (vv) b.faceV[fi] = !b.faceV[fi]; else b.faceU[fi] = !b.faceU[fi]; }, cube));
+                    sc.actions.add(Action.box(b -> { if (vv) b.faceV[fi] = !b.faceV[fi]; else b.faceU[fi] = !b.faceU[fi]; }, cube, nameGlob));
                 }
                 case "switchface" -> {   // swap the UVs of two faces: switchface <faceA> <faceB>
                     int a = face(k[1]), bb = face(k[2]);
-                    sc.actions.add(Action.box(box -> { int t = box.swap[a]; box.swap[a] = box.swap[bb]; box.swap[bb] = t; }, cube));
+                    sc.actions.add(Action.box(box -> { int t = box.swap[a]; box.swap[a] = box.swap[bb]; box.swap[bb] = t; }, cube, nameGlob));
                 }
                 // mirror <axis>: invert geometry on an axis AND flip the matching UV in one op.
                 case "mirror" -> {
                     if (k.length >= 2 && (k[1].equalsIgnoreCase("x") || k[1].equalsIgnoreCase("y") || k[1].equalsIgnoreCase("z"))) {
                         int ax = axis(k[1]);
-                        sc.actions.add(Action.box(b -> { b.pos[ax] = -b.pos[ax]; if (ax == 1) b.flipV = !b.flipV; else b.flipU = !b.flipU; }, cube));
+                        sc.actions.add(Action.box(b -> { b.pos[ax] = -b.pos[ax]; if (ax == 1) b.flipV = !b.flipV; else b.flipU = !b.flipU; }, cube, nameGlob));
                     } else { boolean on = k.length < 2 || truthy(k[1]); sc.actions.add(Action.part(c -> c.mirror = on)); }
                 }
+                // emissive [0..1] / transparent [0..1] — box-scope flags (override the bone-name e_/t_ value).
+                // `make emissive` / `make transparent` also accepted (the leading "make" is ignored).
+                case "emissive" -> { double v = k.length > 1 ? Expr.parse(k[1], vars).eval(zero()) : 1.0;
+                    sc.actions.add(Action.box(b -> b.emissive = Math.max(0, Math.min(1, v)), cube, nameGlob)); }
+                case "transparent", "transparency" -> { double v = k.length > 1 ? Expr.parse(k[1], vars).eval(zero()) : 0.5;
+                    sc.actions.add(Action.box(b -> b.transparency = Math.max(0, Math.min(1, v)), cube, nameGlob)); }
+                case "make" -> {   // `make emissive [v]` / `make transparent [v]`
+                    String what = k[1].toLowerCase(Locale.ROOT);
+                    double v = k.length > 2 ? Expr.parse(k[2], vars).eval(zero()) : (what.startsWith("emis") ? 1.0 : 0.5);
+                    double cv = Math.max(0, Math.min(1, v));
+                    if (what.startsWith("emis")) sc.actions.add(Action.box(b -> b.emissive = cv, cube, nameGlob));
+                    else if (what.startsWith("transp")) sc.actions.add(Action.box(b -> b.transparency = cv, cube, nameGlob));
+                    else throw new IllegalArgumentException("make <emissive|transparent> [value]");
+                }
                 case "bset" -> { int ax = axis(k[1].replace("bz.", "")); Expr e = Expr.parse(line.substring(line.indexOf(k[2])), vars);
-                    sc.actions.add(Action.box(b -> b.pos[ax] = e.eval(box(b)), cube)); }
+                    sc.actions.add(Action.box(b -> b.pos[ax] = e.eval(box(b)), cube, nameGlob)); }
                 case "btranslate" -> { Expr x = Expr.parse(k[1], vars), y = Expr.parse(k[2], vars), z = Expr.parse(k[3], vars);
-                    sc.actions.add(Action.box(b -> { b.pos[0] += x.eval(box(b)); b.pos[1] += y.eval(box(b)); b.pos[2] += z.eval(box(b)); }, cube)); }
+                    sc.actions.add(Action.box(b -> { b.pos[0] += x.eval(box(b)); b.pos[1] += y.eval(box(b)); b.pos[2] += z.eval(box(b)); }, cube, nameGlob)); }
+                // animate <rot|pos|size> <x|y|z> <GLSL formula> — arbitrary per-frame animation, generated
+                // into cos_anim_* functions. `gametime` -> GameTime. rot = radians onto the orbit; pos =
+                // additive position delta; size = additive half-extent delta. Example:
+                //   animate rot x radians(sin(gametime*2000.0)*5.0)   animate pos y sin(gametime*500.0)
+                case "animate" -> {
+                    String target = k[1].toLowerCase(Locale.ROOT); int ax = axis(k[2]);
+                    String formula = "(" + line.substring(line.indexOf(k[3])).replaceAll("(?i)\\bgametime\\b", "GameTime") + ")";
+                    sc.actions.add(Action.box(b -> {
+                        switch (target) {
+                            case "rot", "rotation" -> b.animRot[ax] = formula;
+                            case "pos", "position" -> b.animPos[ax] = formula;
+                            case "size", "scale"   -> b.animSize[ax] = formula;
+                            default -> throw new IllegalArgumentException("animate target must be rot|pos|size");
+                        }
+                    }, cube, nameGlob));
+                }
                 default -> throw new IllegalArgumentException("unknown directive '" + op + "' in " + src);
             }
         }

@@ -122,16 +122,14 @@ public final class GlslEmitter {
               .append(faces).append(")\n");
             return;
         }
-        // full path (rotation / per-face rotation / mirror+ext combos)
-        String macro = b.ext ? "ADD_BOX_EXT_ROTATE_FULL" : "ADD_BOX_ROTATE_FULL";
+        // rotated box -> ADD_BOX_ROTATE (the macro that actually exists; *_ROTATE_FULL was undefined ->
+        // rotated cosmetics silently vanished). Signature: (pos, size, Rotation, rotPivot, 6 faces).
+        String macro = b.ext ? "ADD_BOX_EXT_ROTATE" : "ADD_BOX_ROTATE";
         String r = composeRotation(b);
         String pivot = b.needsRotateMacro() ? b.pivot.glsl() : "vec3(0,0,0)";
-        String rots = rot(b, CemBox.DOWN) + ", " + rot(b, CemBox.UP) + ", " + rot(b, CemBox.NORTH) + ", "
-                + rot(b, CemBox.EAST) + ", " + rot(b, CemBox.SOUTH) + ", " + rot(b, CemBox.WEST);
         sb.append("    ").append(macro).append("(").append(pos).append(", ").append(size).append(", ")
           .append(r).append(", ").append(pivot).append(",\n        ")
-          .append(faces).append(",\n        ")
-          .append(rots).append(", ").append(b.mirror).append(")\n");
+          .append(faces).append(")\n");
     }
 
     private String faceArg(CemBox b, int idx, boolean atlas) {

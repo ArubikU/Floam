@@ -33,6 +33,8 @@ import java.util.List;
 public final class ArmorDataCodec {
 
     public static final int BASE = 1000;          // cem id of the first armor part
+    /** Uniform scale applied to box pos+size at encode time (1.0 = unchanged; equipment uses 0.75). */
+    public double extraScale = 1.0;
     public static final int PIX_PER_BOX = 20;     // ceil(SCALARS / 2)
     public static final int SCALARS = 40;
     public static final double RANGE = 64.0;      // fixed-point half-range
@@ -102,10 +104,10 @@ public final class ArmorDataCodec {
     private double[] scalars(CemBox b) {
         double[] s = new double[SCALARS];
         int i = 0;
-        s[i++] = b.center.x; s[i++] = b.center.y; s[i++] = b.center.z;
+        s[i++] = b.center.x * extraScale; s[i++] = b.center.y * extraScale; s[i++] = b.center.z * extraScale;
         // clamp to a tiny min: a zero-extent box (flat "plane" spikes, e.g. masaki) makes the shader's
         // 1/rd box intersect divide by zero -> NaN -> a stray vertex stretching to screen origin.
-        Vec3 size = new Vec3(Math.max(b.half.x * b.scale, 0.01), Math.max(b.half.y * b.scale, 0.01), Math.max(b.half.z * b.scale, 0.01));
+        Vec3 size = new Vec3(Math.max(b.half.x * b.scale * extraScale, 0.01), Math.max(b.half.y * b.scale * extraScale, 0.01), Math.max(b.half.z * b.scale * extraScale, 0.01));
         s[i++] = size.x; s[i++] = size.y; s[i++] = size.z;
         Mat3 R = rotation(b);
         double[] m = R.m;                          // same order GlslEmitter feeds to mat3(...)

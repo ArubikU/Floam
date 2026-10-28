@@ -1,0 +1,204 @@
+{
+ "meta": {
+  "format_version": "4.5",
+  "model_format": "free",
+  "box_uv": false
+ },
+ "name": "elf_ears",
+ "resolution": {
+  "width": 64,
+  "height": 64
+ },
+ "elements": [
+  {
+   "name": "earL",
+   "from": [
+    -9.0,
+    20.5,
+    -3.51
+   ],
+   "to": [
+    -4.0,
+    23.5,
+    -3.49
+   ],
+   "origin": [
+    -6.5,
+    22,
+    -3.5
+   ],
+   "faces": {
+    "down": {
+     "uv": [
+      3,
+      5,
+      8,
+      8
+     ],
+     "texture": 0
+    },
+    "up": {
+     "uv": [
+      3,
+      5,
+      8,
+      8
+     ],
+     "texture": 0
+    },
+    "north": {
+     "uv": [
+      3,
+      5,
+      8,
+      8
+     ],
+     "texture": 0
+    },
+    "east": {
+     "uv": [
+      3,
+      5,
+      8,
+      8
+     ],
+     "texture": 0
+    },
+    "south": {
+     "uv": [
+      3,
+      5,
+      8,
+      8
+     ],
+     "texture": 0
+    },
+    "west": {
+     "uv": [
+      3,
+      5,
+      8,
+      8
+     ],
+     "texture": 0
+    }
+   },
+   "uuid": "335fe78d-93a3-4327-b55d-f9c15000bd29"
+  },
+  {
+   "name": "earR",
+   "from": [
+    4.0,
+    20.5,
+    -3.51
+   ],
+   "to": [
+    9.0,
+    23.5,
+    -3.49
+   ],
+   "origin": [
+    6.5,
+    22,
+    -3.5
+   ],
+   "faces": {
+    "down": {
+     "uv": [
+      8,
+      5,
+      3,
+      8
+     ],
+     "texture": 0
+    },
+    "up": {
+     "uv": [
+      8,
+      5,
+      3,
+      8
+     ],
+     "texture": 0
+    },
+    "north": {
+     "uv": [
+      8,
+      5,
+      3,
+      8
+     ],
+     "texture": 0
+    },
+    "east": {
+     "uv": [
+      8,
+      5,
+      3,
+      8
+     ],
+     "texture": 0
+    },
+    "south": {
+     "uv": [
+      8,
+      5,
+      3,
+      8
+     ],
+     "texture": 0
+    },
+    "west": {
+     "uv": [
+      8,
+      5,
+      3,
+      8
+     ],
+     "texture": 0
+    }
+   },
+   "uuid": "c31ebd08-fb50-44a9-847d-e26b85b0afcf"
+  }
+ ],
+ "groups": [
+  {
+   "name": "head",
+   "uuid": "cad6132a-a9d2-46bd-aa9c-76b8e24858c7",
+   "origin": [
+    0,
+    24,
+    0
+   ],
+   "children": [
+    "335fe78d-93a3-4327-b55d-f9c15000bd29",
+    "c31ebd08-fb50-44a9-847d-e26b85b0afcf"
+   ]
+  }
+ ],
+ "outliner": [
+  {
+   "uuid": "cad6132a-a9d2-46bd-aa9c-76b8e24858c7",
+   "name": "head",
+   "origin": [
+    0,
+    24,
+    0
+   ],
+   "children": [
+    "335fe78d-93a3-4327-b55d-f9c15000bd29",
+    "c31ebd08-fb50-44a9-847d-e26b85b0afcf"
+   ]
+  }
+ ],
+ "textures": [
+  {
+   "id": "0",
+   "name": "tex",
+   "width": 64,
+   "height": 64,
+   "uv_width": 64,
+   "uv_height": 64
+  }
+ ]
+}

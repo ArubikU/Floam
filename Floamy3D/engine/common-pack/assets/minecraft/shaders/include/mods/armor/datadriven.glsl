@@ -10,6 +10,12 @@
 
 float fd_dec(int hi, int lo) { return float(hi * 256 + lo) / 65535.0 * (2.0 * FD_RANGE) - FD_RANGE; }
 
+// emissive intensity of the closest CEM box hit (-1 = none); set by armor.glsl + cosmetic decode,
+// read by the FSH to mix toward unlit/full-bright. Shared so e_<bone> works for armor AND cosmetics.
+float cosEmissive = -1.0;
+// transparency/alpha of the closest CEM box hit (-1 = opaque); t_<bone>. Multiplies color.a in the FSH.
+float cosAlpha = -1.0;
+
 ivec4 fd_px(int x, int y) { return ivec4(texelFetch(Sampler0, ivec2(x, y), 0) * 255.0 + 0.5); }
 
 // Grid (cols,rows) is stored at atlas pixel (1,0): R=cols, G=rows.

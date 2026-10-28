@@ -270,8 +270,8 @@ public class Floamy3D extends JavaPlugin {
 
         jp(root, "_README.jp", """
                 # ============================================================================
-                # Floamy3D — JEM -> shader transform DSL (hot-reloaded by /floamy3d build, no jar
-                # recompile). Files are split so a growing hand-tuned algorithm stays manageable.
+                # JavaPowder (.jp) — Floamy3D's JEM -> shader transform DSL (hot-reloaded by
+                # /floamy3d build, no jar recompile). Files are split so a growing hand-tuned algorithm stays manageable.
                 #   parsers/_*.jp        shared: global `var` defs + rules applied to BOTH pipelines
                 #   parsers/armor/*.jp   armor parts          (base PIX, scale 0.75)
                 #   parsers/cosmetic/*.jp player-part cosmetics (their own algorithm: base none, scale 1)
@@ -604,13 +604,11 @@ public class Floamy3D extends JavaPlugin {
     }
 
     private void zipCommand(CommandSender sender) {
-        try {
-            this.zipOutput();
-            sender.sendMessage(ChatColor.GREEN + "Output files have been zipped successfully.");
-        } catch (IOException e) {
-            sender.sendMessage(ChatColor.RED + "Failed to zip output files: " + e.getMessage());
-            e.printStackTrace();
-        }
+        // The build already emits the pack as BOTH an unzipped folder (output/) and a zip (Floamy3D.zip).
+        // The old output.zip (Windows backslash entries, redundant) is gone — delete it if it lingers.
+        File legacyZip = this.getDataFolder().toPath().resolve("output.zip").toFile();
+        if (legacyZip.exists()) legacyZip.delete();
+        sender.sendMessage(ChatColor.GREEN + "Pack is served as Floamy3D.zip and unzipped in output/. No separate output.zip is generated.");
     }
 
     private void zipOutput() throws IOException {

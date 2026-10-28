@@ -1,4 +1,6 @@
-# Floamy3D `.jp` DSL — Reference
+# JavaPowder (`.jp`) — Floamy3D transform DSL Reference
+
+**JavaPowder** is Floamy3D's transform language; scripts use the `.jp` extension.
 
 Hot-reloadable transform scripts. Edit a `.jp`, run **`/floamy3d build`** in-game to reload + regenerate + re-send the pack. No server restart needed for `.jp` changes (only for Java/engine changes).
 

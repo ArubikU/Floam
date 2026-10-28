@@ -2,26 +2,23 @@
 
 #define FSH
 
-#moj_import <light.glsl>
-#moj_import <fog.glsl>
-#moj_import <matf.glsl>
+#moj_import <minecraft:light.glsl>
+#moj_import <minecraft:fog.glsl>
+#moj_import <minecraft:dynamictransforms.glsl>
+#moj_import <minecraft:projection.glsl>
+#moj_import <minecraft:globals.glsl>
+#moj_import <minecraft:matf.glsl>
 #moj_import <emissive_utils.glsl>
 #moj_import <mods/armor/armorparts.glsl>
 #moj_import <mods/parts.glsl>
+#moj_import <cem_locs.glsl>
+#moj_import <floamy/registry/defines.glsl>
 
 uniform sampler2D Sampler0;
-uniform float GameTime;
-uniform mat4 ModelViewMat;
-uniform mat4 ProjMat;
-uniform vec3 Light0_Direction;
-uniform vec3 Light1_Direction;
-uniform vec4 ColorModulator;
-uniform float FogStart;
-uniform float FogEnd;
-uniform vec4 FogColor;
 uniform mat3 IViewRotMat;
 
-in float vertexDistance;
+in float sphericalVertexDistance;
+in float cylindricalVertexDistance;
 in vec4 vertexColor;
 in vec2 texCoord0;
 in vec4 normal;
@@ -52,11 +49,13 @@ vec4 relativeUv(float x, float y, float xlength, float ylength, ivec2 cord) {
 }
 
 #moj_import <mods/armor/datadriven.glsl>
+#moj_import <floamy/cosmetic_decode.glsl>
 
 void main() {
     if(markforremove == 1) discard;
     gl_FragDepth = gl_FragCoord.z;
-    float vDistance = vertexDistance;
+    float sphericalDistance = sphericalVertexDistance;
+    float cylindricalDistance = cylindricalVertexDistance;
     vec2 texSize = textureSize(Sampler0, 0);
     bool isHead = (texCoord0 * texSize).y <= 16;
     vec4 color = texture(Sampler0, texCoord0);
@@ -85,8 +84,13 @@ void main() {
                 if (cemi == -1){
                     continue;
                 }
-                switch (cemi) {
-                    #moj_import <mods/armor/armor.glsl>
+                // cosmetics (cem id 50..999) -> data-driven decode; armor (>=1000) -> its own decode.
+                if (cemi >= 50 && cemi < 1000) {
+                    cosmeticRender(cemi, center, dirTBN, modelSize, TBN, RelativeCords, color, minT);
+                } else {
+                    switch (cemi) {
+                        #moj_import <mods/armor/armor.glsl>
+                    }
                 }
                 
             }
@@ -96,15 +100,22 @@ void main() {
 
         if (minT == MAX_DEPTH) discard;
         writeDepth(dir * minT);
-        vDistance = minT;
+        sphericalDistance = minT;
+        cylindricalDistance = minT;
         float opacity = ceil(color.a * 255);
-        if (dynamicEmissive == 0 && opacity != 128) color *= cem_light;
+        // emissive cosmetic box (e_<bone>): mix toward full-bright/unlit by its intensity; else apply light.
+        if (cosEmissive >= 0.0) {
+            color = mix(color * cem_light, color, cosEmissive);
+        } else if (dynamicEmissive == 0 && opacity != 128) {
+            color *= cem_light;
+        }
+        if (cosAlpha >= 0.0) color.a *= cosAlpha;   // t_<bone> transparency
     }
     
     float opacity = ceil(color.a * 255);
     if (cem < 1) {  
         #ifdef ALPHA_CUTOUT
-            if (color.a < ALPHA_CUTOUT) {
+            if (color.a < ALPHA_CUTOUT && cem == 0) {
                 discard;
             }
         #endif
@@ -129,6 +140,6 @@ void main() {
     if (dynamicEmissive == 1) {
         fragColor = color;
     } else {
-        fragColor = linear_fog(color, vDistance, FogStart, FogEnd, FogColor);
+        fragColor = apply_fog(color, sphericalDistance, cylindricalDistance, FogEnvironmentalStart, FogEnvironmentalEnd, FogRenderDistanceStart, FogRenderDistanceEnd, FogColor);
     }
 }

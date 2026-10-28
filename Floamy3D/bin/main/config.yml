@@ -1,0 +1,19 @@
+# Floamy3D configuration
+
+# MineSkin API key (optional) — raises skin-signing rate limits for runtime cosmetics.
+# Get one at https://mineskin.org/account
+mineskin-api-key: ""
+
+# Default animation speed stamped into cosmetic markers (green channel, 0-255).
+default-animation-speed: 128
+
+# Built-in resourcepack host: the plugin serves the generated pack over HTTP and sends it to
+# players on join + after /floamy3d build. No external file host / server.properties needed.
+pack:
+  host: true
+  port: 8085
+  # Address clients connect to. 127.0.0.1 works for a local client; for real/LAN players set
+  # this to the server's LAN or public IP.
+  address: "127.0.0.1"
+  prompt: "Floamy3D — armor & cosmetics"
+  force: false

@@ -1,0 +1,10 @@
+{
+  "layers" : {
+    "humanoid" : [ {
+      "texture" : "minecraft:cassuto_armor2_pack"
+    } ],
+    "humanoid_leggings" : [ {
+      "texture" : "minecraft:cassuto_armor2_pack"
+    } ]
+  }
+}

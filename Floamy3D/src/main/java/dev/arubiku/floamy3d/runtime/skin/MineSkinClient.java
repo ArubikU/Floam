@@ -25,6 +25,9 @@ public final class MineSkinClient {
 
     private final HttpClient http = HttpClient.newHttpClient();
     private final String apiKey; // optional; raises rate limits
+    // content-hash -> [value, signature]: the same composed skin signs to the same texture, so cache it
+    // in memory and never re-upload identical skins (MineSkin upload is the slow + rate-limited step).
+    private final java.util.Map<String, String[]> cache = new java.util.concurrent.ConcurrentHashMap<>();
 
     public MineSkinClient(String apiKey) { this.apiKey = apiKey; }
 
@@ -33,6 +36,12 @@ public final class MineSkinClient {
         try {
             ByteArrayOutputStream png = new ByteArrayOutputStream();
             ImageIO.write(skin, "png", png);
+            byte[] pngBytes = png.toByteArray();
+
+            String hash = java.util.HexFormat.of().formatHex(
+                    java.security.MessageDigest.getInstance("SHA-256").digest(pngBytes));
+            String[] hit = cache.get(hash);
+            if (hit != null) return hit;
 
             String boundary = "floamy" + UUID.randomUUID();
             ByteArrayOutputStream body = new ByteArrayOutputStream();
@@ -40,7 +49,7 @@ public final class MineSkinClient {
                     + "Content-Disposition: form-data; name=\"file\"; filename=\"skin.png\"\r\n"
                     + "Content-Type: image/png\r\n\r\n";
             body.write(head.getBytes());
-            body.write(png.toByteArray());
+            body.write(pngBytes);
             body.write(("\r\n--" + boundary + "--\r\n").getBytes());
 
             HttpRequest.Builder req = HttpRequest.newBuilder(URI.create(ENDPOINT))
@@ -53,7 +62,9 @@ public final class MineSkinClient {
             String value = tex.path("value").asText(null);
             String signature = tex.path("signature").asText(null);
             if (value == null) return null;
-            return new String[]{value, signature};
+            String[] result = {value, signature};
+            cache.put(hash, result);   // never re-upload this exact skin again
+            return result;
         } catch (Exception e) {
             return null;
         }

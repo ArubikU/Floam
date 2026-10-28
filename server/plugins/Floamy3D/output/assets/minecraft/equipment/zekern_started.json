@@ -1,0 +1,10 @@
+{
+  "layers" : {
+    "humanoid" : [ {
+      "texture" : "minecraft:zekern_started"
+    } ],
+    "humanoid_leggings" : [ {
+      "texture" : "minecraft:zekern_started"
+    } ]
+  }
+}

@@ -1,2 +1,23 @@
-# body cosmetics: cape, wings
-# match *body*
+# human_body.jp — baseline JavaPowder transform for ALL body-slot cosmetics (cape, wings, etc).
+#
+# Deliberately EMPTY of position/orientation ops. The decode (floamy/cosmetic_decode.glsl) already
+# applies the PIX (JEM->CEM) bridge to every box unconditionally — confirmed by refcape decoding to
+# the EXACT reference box values (pos/size/R) with this file empty. The old rotatesc x90/y180/z180 +
+# flipface/switchface set here (Y<->Z-conjugated era) fought that and is REMOVED — do not re-add
+# without re-validating against a reference decode; it will double-transform.
+#
+# Per-cosmetic animation (wing flap, cape sway, etc) does NOT belong here — it applies to every body
+# cosmetic uniformly. Put it in that cosmetic's OWN cosmetics/<id>/model.jp via `match <id>:*`.
+#
+# Reference: MagicShaders' CEM_WINGS (assets/minecraft/shaders/include/mods/cem/clasic.glsl:121-155):
+#   ADD_BOX_WITH_ROTATION_ROTATE(vec3(-4,3.75,-5), vec3(4,8,0),
+#       Rotate3(animationTime * PI * -0.05, Y) * PIX, ...)          # left wing
+#   animationTime = cos(GameTime*1000) * (cem_color.g * def_speed) + 22.5     # def_speed = 0.22/120
+#   (right wing: pos.x=+4, angle sign flips to `* 0.05`, offset -157.5)
+# Ported to JavaPowder as a per-cosmetic `animate` op (see cosmetics/wings/model.jp for the live one):
+#   match wings:*
+#   animate rot y radians(cos(gametime*1000.0) * 10.0)
+# `cem_color.g` (a per-armor tint channel controlling flap speed in the reference) has no cosmetic
+# equivalent yet — the ported formula uses a fixed amplitude/speed instead.
+
+match *:*body*

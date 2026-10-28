@@ -1,0 +1,10 @@
+{
+  "layers" : {
+    "humanoid" : [ {
+      "texture" : "minecraft:refmap"
+    } ],
+    "humanoid_leggings" : [ {
+      "texture" : "minecraft:refmap"
+    } ]
+  }
+}

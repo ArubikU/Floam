@@ -25,7 +25,8 @@ public enum PackVersion {
     V1_21_2("1.21.2", 42, 54),
     V1_21_5("1.21.5", 55, 62),
     V1_21_6("1.21.6", 63, 68),
-    V1_21_9("1.21.9", 69, 2147483647); // #version 330 era: 1.21.9/10(69), 1.21.11(75), 26.1(84), future
+    V1_21_9("1.21.9", 69, 9999); // #version 330 era: 1.21.9/10(69), 1.21.11(75), 26.1(84), future. NOT
+                                 // Integer.MAX — 3rd-party mergers (CraftEngine) reparse it as a float and fail.
 
     public final String dir;       // engine/<dir>
     public final int minFormat;

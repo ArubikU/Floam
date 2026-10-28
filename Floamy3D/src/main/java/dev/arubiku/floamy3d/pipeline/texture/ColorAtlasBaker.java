@@ -54,8 +54,37 @@ public final class ColorAtlasBaker {
     }
 
     /** Bake the grid atlas + COLOR_ARMOR map for the OLD color-armor mode. */
+    // Real obtainable leather-armor colors: the marker COLOR_ARMOR key must NEVER land on one of these,
+    // or the shader hijacks real dyed-leather armor. Default un-dyed leather + the 16 dye base colors.
+    private static final int[][] RESERVED_LEATHER = {
+        {160,101,64}, // default un-dyed leather (#A06540) — the critical one
+        {249,255,254},{249,128,29},{199,78,189},{58,179,218},{254,216,61},{128,199,31},
+        {243,139,170},{71,79,82},{157,157,151},{22,156,156},{137,50,184},{60,68,170},
+        {131,84,50},{94,124,22},{176,46,38},{29,29,33}
+    };
+    private static void warnIfReserved(String id, int[] c) {
+        for (int[] r : RESERVED_LEATHER) {
+            if (Math.abs(c[0]-r[0]) <= 4 && Math.abs(c[1]-r[1]) <= 4 && Math.abs(c[2]-r[2]) <= 4) {
+                System.err.println("[Floamy3D] WARNING: armor '" + id + "' marker color (" + c[0] + "," + c[1]
+                    + "," + c[2] + ") is within range of a REAL obtainable leather color (" + r[0] + "," + r[1]
+                    + "," + r[2] + "). It may hijack real dyed-leather armor — pick a saturated/unnatural color.");
+                return;
+            }
+        }
+    }
+
+    // The REAL vanilla leather armor textures (bundled), baked into tile 0 so unmatched dye colors
+    // render as normal leather instead of being hijacked by a custom armor.
+    private static final BufferedImage VANILLA_LEATHER_1 = loadRes("/floamy/vanilla/leather.png");
+    private static final BufferedImage VANILLA_LEATHER_2 = loadRes("/floamy/vanilla/leather_leggings.png");
+    private static BufferedImage loadRes(String p) {
+        try (java.io.InputStream in = ColorAtlasBaker.class.getResourceAsStream(p)) {
+            return in == null ? null : ImageIO.read(in);
+        } catch (Exception e) { return null; }
+    }
+
     public Result bakeColorAtlas(List<Entry> entries) {
-        int n = Math.max(1, entries.size());
+        int n = Math.max(1, entries.size() + 1);   // +1: tile 0 reserved for the real vanilla leather
         int cols = (int) Math.ceil(Math.sqrt(n));
         int rows = (int) Math.ceil((double) n / cols);
 
@@ -63,9 +92,19 @@ public final class ColorAtlasBaker {
         BufferedImage l2 = new BufferedImage(cols * TILE_W, rows * TILE_H, BufferedImage.TYPE_INT_ARGB);
 
         StringBuilder glsl = new StringBuilder();
+        java.util.Map<Integer, String> seenColors = new java.util.HashMap<>();   // colorKey -> first armor id
         for (int i = 0; i < entries.size(); i++) {
             Entry e = entries.get(i);
-            int cx = i % cols, cy = i / cols;
+            // duplicate marker color = the COLOR_ARMOR switch matches the FIRST case only -> the later
+            // armor is silently overridden by the earlier one (and vice-versa for a player wearing it).
+            int key = (e.color[0] << 16) | (e.color[1] << 8) | e.color[2];
+            String prev = seenColors.putIfAbsent(key, e.id);
+            if (prev != null)
+                System.err.println("[Floamy3D] WARNING: armor '" + e.id + "' shares marker color ("
+                    + e.color[0] + "," + e.color[1] + "," + e.color[2] + ") with '" + prev
+                    + "' — one OVERRIDES the other. Give them distinct colors.");
+            int tile = i + 1;   // tile 0 reserved for real leather; custom armors start at tile 1
+            int cx = tile % cols, cy = tile / cols;
             int ox = cx * TILE_W, oy = cy * TILE_H;
 
             blit(l1, e.layer1, ox, oy);
@@ -79,9 +118,18 @@ public final class ColorAtlasBaker {
             l1.setRGB(ox + 63, oy + 31, ic);
             l2.setRGB(ox + 63, oy + 31, ic);
 
+            warnIfReserved(e.id, e.color);
             glsl.append(String.format(Locale.ROOT, "COLOR_ARMOR(%d, %d, %d) {\n    cords = vec2(%d, %d);\n}\n",
                     e.color[0], e.color[1], e.color[2], cx, cy));
         }
+        // Tile 0 = REAL vanilla leather, NO marker pixels (channels read 0 -> isPartOne/Two false).
+        // Unmatched dye colors fall to cords (0,0) -> this tile -> real leather renders normally
+        // instead of being hijacked by an armor. (Option B fix for the leather-override bug.)
+        if (VANILLA_LEATHER_1 != null) blit(l1, VANILLA_LEATHER_1, 0, 0);
+        if (VANILLA_LEATHER_2 != null) blit(l2, VANILLA_LEATHER_2, 0, 0);
+        l1.setRGB(63, 30, 0); l1.setRGB(63, 31, 0);   // clear markers -> no CEM on real leather
+        l2.setRGB(63, 30, 0); l2.setRGB(63, 31, 0);
+
         // IS_LEATHER_LAYER sentinel: the shader checks pixel (0,0) == pure white to know this
         // texture is a generated color atlas (so it must run the armor path, not a plain skin).
         l1.setRGB(0, 0, argb(255, 255, 255, 255));
@@ -122,8 +170,8 @@ public final class ColorAtlasBaker {
             List<dev.arubiku.floamy3d.pipeline.texture.ArmorDataCodec.Part> parts) throws IOException {
         int cols = r.cols, rows = r.rows;
         int dataRows = dev.arubiku.floamy3d.pipeline.texture.ArmorDataCodec.dataRows(parts, cols);
-        BufferedImage l1 = expandWithData(r.layer1Atlas, cols, rows, dataRows, parts);
-        BufferedImage l2 = expandWithData(r.layer2Atlas, cols, rows, dataRows, parts);
+        BufferedImage l1 = expandWithData(r.layer1Atlas, cols, rows, dataRows, parts, ARMOR_3D_SCALE);
+        BufferedImage l2 = expandWithData(r.layer2Atlas, cols, rows, dataRows, parts, ARMOR_3D_SCALE);
 
         Path dir = assetsRoot.resolve("minecraft/textures/models/armor");
         Files.createDirectories(dir);
@@ -146,6 +194,11 @@ public final class ColorAtlasBaker {
 
     private BufferedImage expandWithData(BufferedImage tiles, int cols, int rows, int dataRows,
             List<dev.arubiku.floamy3d.pipeline.texture.ArmorDataCodec.Part> parts) {
+        return expandWithData(tiles, cols, rows, dataRows, parts, 1.0);
+    }
+
+    private BufferedImage expandWithData(BufferedImage tiles, int cols, int rows, int dataRows,
+            List<dev.arubiku.floamy3d.pipeline.texture.ArmorDataCodec.Part> parts, double extraScale) {
         int w = cols * 64, tileH = rows * 32;
         BufferedImage img = new BufferedImage(w, tileH + dataRows, BufferedImage.TYPE_INT_ARGB);
         for (int y = 0; y < tileH; y++)
@@ -153,7 +206,9 @@ public final class ColorAtlasBaker {
                 img.setRGB(x, y, tiles.getRGB(x, y));
         // (0,0) stays the IS_LEATHER_LAYER white marker; (1,0) carries the tile grid dims.
         img.setRGB(1, 0, argb(cols, rows, 0, 255));
-        new dev.arubiku.floamy3d.pipeline.texture.ArmorDataCodec().encode(img, parts, cols, rows);
+        var codec = new dev.arubiku.floamy3d.pipeline.texture.ArmorDataCodec();
+        codec.extraScale = extraScale;
+        codec.encode(img, parts, cols, rows);
         return img;
     }
 
@@ -170,6 +225,56 @@ public final class ColorAtlasBaker {
         for (Entry e : entries) {
             ImageIO.write(e.layer1, "png", humanoid.resolve(e.id + ".png").toFile());
             if (e.layer2 != null) ImageIO.write(e.layer2, "png", leggings.resolve(e.id + ".png").toFile());
+        }
+    }
+
+    /**
+     * Modern delivery WITH 3D CEM. Each armor's equipment texture is a SELF-CONTAINED 1-tile atlas:
+     * sentinel (0,0)=white, grid (1,0)=(1,1), markers (63,30) layer-flag + (63,31) internal-color,
+     * plus the appended data region (this armor's box geometry). The equipment item carries no dyed
+     * color, so the shader's RelativeCords stays (0,0) -> it reads THIS tile's markers -> armor.glsl
+     * matches the internal-color -> ray-marches. No shader change needed.
+     */
+    /** Uniform shrink for the 3D armor geometry (both the dyed-leather atlas and equipment-id paths). */
+    private static final double ARMOR_3D_SCALE = 0.80;
+
+    public void writeEquipmentCem(List<Entry> entries,
+            java.util.Map<String, List<dev.arubiku.floamy3d.pipeline.texture.ArmorDataCodec.Part>> partsByArmor,
+            Path assetsRoot) throws IOException {
+        Path humanoid = assetsRoot.resolve("minecraft/textures/entity/equipment/humanoid");
+        Path leggings = assetsRoot.resolve("minecraft/textures/entity/equipment/humanoid_leggings");
+        Files.createDirectories(humanoid);
+        Files.createDirectories(leggings);
+        for (Entry e : entries) {
+            List<dev.arubiku.floamy3d.pipeline.texture.ArmorDataCodec.Part> parts =
+                    partsByArmor.getOrDefault(e.id, java.util.List.of());
+            // The index row maps part = cemId-BASE at x = part % (cols*64). dataY0 is hardcoded indexY+1
+            // (1 index row), so cols MUST be wide enough that maxPart < cols*64 — else the index spills
+            // onto a 2nd row that the data then overwrites, corrupting the decode (armor renders nothing).
+            int maxPart = 0;
+            for (var p : parts) maxPart = Math.max(maxPart, p.cemId - dev.arubiku.floamy3d.pipeline.texture.ArmorDataCodec.BASE);
+            int cols = Math.max(1, maxPart / TILE_W + 1);
+            // 2 tile-rows (armor at tile 0, row 1 left EMPTY): the shader maps the model UV V over 1/rows of
+            // the texture height. With rows=1 that V range spills into the data region below the single tile
+            // -> flat (non-billboard) faces sample the encoded data as color (the leggings artifact). rows=2
+            // pushes the data below the V range, into the empty buffer row instead.
+            int rows = 2;
+            int ic = argb(clamp(e.internalColor, 0), clamp(e.internalColor, 1), clamp(e.internalColor, 2), 255);
+            BufferedImage l1 = new BufferedImage(cols * TILE_W, rows * TILE_H, BufferedImage.TYPE_INT_ARGB);
+            blit(l1, e.layer1, 0, 0);
+            l1.setRGB(63, 30, argb(0, 0, 0, 255));            // layer flag: part 1
+            l1.setRGB(63, 31, ic);                             // internal-color marker
+            l1.setRGB(0, 0, argb(255, 255, 255, 255));         // IS_LEATHER_LAYER sentinel
+            BufferedImage l2 = new BufferedImage(cols * TILE_W, rows * TILE_H, BufferedImage.TYPE_INT_ARGB);
+            blit(l2, e.layer2 != null ? e.layer2 : e.layer1, 0, 0);
+            l2.setRGB(63, 30, argb(255, 255, 255, 255));       // layer flag: part 2
+            l2.setRGB(63, 31, ic);
+            l2.setRGB(0, 0, argb(255, 255, 255, 255));
+            int dataRows = dev.arubiku.floamy3d.pipeline.texture.ArmorDataCodec.dataRows(parts, cols);
+            BufferedImage l1d = expandWithData(l1, cols, rows, dataRows, parts, ARMOR_3D_SCALE);
+            BufferedImage l2d = expandWithData(l2, cols, rows, dataRows, parts, ARMOR_3D_SCALE);
+            ImageIO.write(l1d, "png", humanoid.resolve(e.id + ".png").toFile());
+            ImageIO.write(l2d, "png", leggings.resolve(e.id + ".png").toFile());
         }
     }
 

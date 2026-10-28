@@ -1,0 +1,10 @@
+{
+  "layers" : {
+    "humanoid" : [ {
+      "texture" : "minecraft:masaki_spike"
+    } ],
+    "humanoid_leggings" : [ {
+      "texture" : "minecraft:masaki_spike"
+    } ]
+  }
+}

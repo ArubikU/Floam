@@ -1,0 +1,14 @@
+api-version: '1.21'
+name: Floamy3D
+version: 2.0.0
+main: dev.arubiku.floamy3d.Floamy3D
+description: Vanilla-shader CEM cosmetics, armor and player-part overrides — bbmodel to shader pipeline.
+authors:
+- ArubikU
+load-before:
+- Nexo
+- ItemsAdder
+permissions:
+    floamy3d.use:
+        description: Allows use of Floamy3D commands
+        default: op

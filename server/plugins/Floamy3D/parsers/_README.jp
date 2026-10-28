@@ -1,5 +1,5 @@
 # ============================================================================
-# Floamy3D — JEM -> shader transform DSL (hot-reloaded by /floamy3d build, no jar
+# JavaPowder (.jp) — Floamy3D JEM -> shader transform DSL (hot-reloaded by /floamy3d build, no jar
 # recompile). Files are split so a growing hand-tuned algorithm stays manageable.
 #   parsers/_*.jp        shared: global `var` defs + rules applied to BOTH pipelines
 #   parsers/armor/*.jp   armor parts          (base PIX, scale 0.75)
